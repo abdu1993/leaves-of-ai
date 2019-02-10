@@ -12,7 +12,7 @@ import time
 from fastai import *
 from fastai.text import *
 
-model_file_url = 'https://drive.google.com/uc?export=download&id=1iM4LYs9wmBnZi9auIxF0iWmiGTpbc63-'
+model_file_url = 'https://drive.google.com/uc?export=download&id=1TSt4kiHYfL2IW04DJEOJtn2Mnf_zY8-T'
 model_file_name = 'model_2_10'
 path = Path(__file__).parent
 
