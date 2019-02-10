@@ -57,7 +57,7 @@ async def analyze(request):
 def textResponse(data, temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):
     seeds = ['you are', 'i love you', 'we are', 'how can']
     if data:
-        word = data
+        word = data['file']
     else:
         word = random.choice(seeds)    
     again = []
@@ -73,8 +73,8 @@ def textResponse(data, temp_init=1, decay=50, stops = ['.'], comma_limit=2, word
            break
         if commas > comma_limit:
             break    
-    #    if all(x in (" ".join([i for i in word.split()[-9:-5]])) for x in last_4) and (len(word.split()) > 10):
-    #        break
+        if all(x in (" ".join([i for i in word.split()[-9:-5]])) for x in last_4) and (len(word.split()) > 10):
+            break
         addition = learn.predict(word, 1, temperature=temp)
         total.append(addition)
         commas = addition.count(',')
