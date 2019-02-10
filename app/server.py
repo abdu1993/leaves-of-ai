@@ -54,71 +54,70 @@ async def analyze(request):
 
     return JSONResponse({'result': textResponse(data)})
 
-def textResponse(data):
-    def generate_lyric(word='', temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):
-        seeds = ['you are', 'i love you', 'we are', 'how can']
-        word = random.choice(seeds)
-        again = []
-        stops.append('xxbos')
-        last_4 = ['','','','']
-        total = []
-        stops.append('xxbos')
-        i = 0
-        commas = 0
-        temp = temp_init
-        while True:
-            if any(x in word for x in stops):
-                break
-            if commas > comma_limit:
-                break    
-            if all(x in (" ".join([i for i in word.split()[-9:-5]])) for x in last_4) and (len(word.split()) > 10):
-                break
-            addition = learn.predict(word, 1, temperature=temp)
-            total.append(addition)
-            commas = addition.count(',')
-            last_4 = total[i].split()[-4:]
-            word = addition
-            i += 1
-            temp = max(abs((math.cos(len(total) * math.pi / decay)))*temp_init,0.1)
+def textResponse(word='', temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):
+    seeds = ['you are', 'i love you', 'we are', 'how can']
+    word = random.choice(seeds)    
+    again = []
+    stops.append('xxbos')
+    last_4 = ['','','','']
+    total = []
+    stops.append('xxbos')
+    i = 0
+    commas = 0
+    temp = temp_init
+    while True:
+        if any(x in word for x in stops):
+           break
+        if commas > comma_limit:
+            break    
+        if all(x in (" ".join([i for i in word.split()[-9:-5]])) for x in last_4) and (len(word.split()) > 10):
+            break
+        addition = learn.predict(word, 1, temperature=temp)
+        total.append(addition)
+        commas = addition.count(',')
+        last_4 = total[i].split()[-4:]
+        word = addition
+        i += 1
+        temp = max(abs((math.cos(len(total) * math.pi / decay)))*temp_init,0.1)
 
-        words = total[-2].split()
-        for i, word in enumerate(words):
-            if word == 'xxbos':
-                words[i] = '<br/>'
-            elif word == 'xxmaj':
-                words[i+1] = words[i+1][0].upper() + words[i+1][1:]
-                words[i] = ''
-            elif word == 'xxup':
-                words[i+1] = words[i+1].upper()
-                words[i] = ''     
-            elif word == 'xxunk' or word == '(' or word == ')' or word == '"':
-                words[i] = ''   
-            elif word == "n't":
-                words[i-1]+= words[i]
-                words[i] = ''
-            elif word == ",":
-                words[i-1]+= words[i]
-                words[i] = ''
-            elif word == '.' or word == '?' or word == '!' or word == ';':
-                words[i-1]+= words[i]
-                words[i] = ''
-            elif word[0] == "'":
-                words[i-1]+= words[i]
-                words[i] = ''
-            elif word == ' ':
-                words[i] = ''
-            elif "n't" in word:
-                words[i-1]+= words[i]
-                words[i] = ''
-            elif word == "na":
-                words[i-1]+= words[i]
-                words[i] = ''
-            try:
-                words.remove('')
-            except:
-                continue
-            
-        return(' '.join(words))
+    words = total[-2].split()
+    for i, word in enumerate(words):
+        if word == 'xxbos':
+            words[i] = '<br/>'
+        elif word == 'xxmaj':
+            words[i+1] = words[i+1][0].upper() + words[i+1][1:]
+            words[i] = ''
+        elif word == 'xxup':
+            words[i+1] = words[i+1].upper()
+            words[i] = ''     
+        elif word == 'xxunk' or word == '(' or word == ')' or word == '"':
+            words[i] = ''   
+        elif word == "n't":
+            words[i-1]+= words[i]
+            words[i] = ''
+        elif word == ",":
+            words[i-1]+= words[i]
+            words[i] = ''
+        elif word == '.' or word == '?' or word == '!' or word == ';':
+            words[i-1]+= words[i]
+            words[i] = ''
+        elif word[0] == "'":
+            words[i-1]+= words[i]
+            words[i] = ''
+        elif word == ' ':
+            words[i] = ''
+        elif "n't" in word:
+            words[i-1]+= words[i]
+            words[i] = ''
+        elif word == "na":
+            words[i-1]+= words[i]
+            words[i] = ''
+        try:
+            words.remove('')
+        except:
+            continue
+
+    return(' '.join(words))
 
 if __name__ == '__main__':
     if 'serve' in sys.argv: uvicorn.run(app, host='0.0.0.0', port=5042)
