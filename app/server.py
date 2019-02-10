@@ -12,8 +12,8 @@ import time
 from fastai import *
 from fastai.text import *
 
-model_file_url = 'https://drive.google.com/uc?export=download&id=1qcZ5PiwA7WwYZUokNDPQOwJneF384jQP'
-model_file_name = 'final_model_2_10_19'
+model_file_url = 'https://drive.google.com/uc?export=download&id=1TSt4kiHYfL2IW04DJEOJtn2Mnf_zY8-T'
+model_file_name = 'model_2_10'
 path = Path(__file__).parent
 
 app = Starlette()
@@ -54,10 +54,12 @@ async def analyze(request):
 
     return JSONResponse({'result': textResponse(data)})
 
-def textResponse(data):
-    def generate_lyric(word='', temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):
+def textResponse(data, temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):
     seeds = ['you are', 'i love you', 'we are', 'how can']
-    word = random.choice(seeds)
+    if data:
+        word = data
+    else:
+        word = random.choice(seeds)    
     again = []
     stops.append('xxbos')
     last_4 = ['','','','']
@@ -68,7 +70,7 @@ def textResponse(data):
     temp = temp_init
     while True:
         if any(x in word for x in stops):
-            break
+           break
         if commas > comma_limit:
             break    
         if all(x in (" ".join([i for i in word.split()[-9:-5]])) for x in last_4) and (len(word.split()) > 10):
@@ -117,7 +119,7 @@ def textResponse(data):
             words.remove('')
         except:
             continue
-            
+
     return(' '.join(words))
 
 if __name__ == '__main__':
