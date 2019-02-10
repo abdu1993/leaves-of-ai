@@ -54,12 +54,9 @@ async def analyze(request):
 
     return JSONResponse({'result': textResponse(data)})
 
-def textResponse(data, temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):
-    seeds = ['you are', 'i love you', 'we are', 'how can']
-    if data:
-        word = data['file']
-    else:
-        word = random.choice(seeds)    
+def textResponse(temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):
+    seeds = ['you are', 'i love you', 'we are', 'how can', 'what if', 'will you']
+    word = random.choice(seeds)    
     again = []
     stops.append('xxbos')
     last_4 = ['','','','']
