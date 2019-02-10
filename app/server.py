@@ -52,7 +52,7 @@ def index(request):
 async def analyze(request):
     data = await request.form()
 
-    return JSONResponse({'result': textResponse(data)})
+    return JSONResponse({'result': textResponse()})
 
 def textResponse(temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):
     seeds = ['you are', 'i love you', 'we are', 'how can', 'what if', 'will you']
