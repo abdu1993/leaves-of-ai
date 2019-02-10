@@ -56,7 +56,10 @@ async def analyze(request):
 
 def textResponse(data, temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):
     seeds = ['you are', 'i love you', 'we are', 'how can']
-    word = random.choice(seeds)    
+    if data:
+        word = data
+    else:
+        word = random.choice(seeds)    
     again = []
     stops.append('xxbos')
     last_4 = ['','','','']
