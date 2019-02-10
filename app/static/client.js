@@ -38,7 +38,7 @@ function analyze() {
             var response = JSON.parse(e.target.responseText);
             el('result-label').innerHTML = `${response['result']}`;
         }
-        el('analyze-button').innerHTML = 'Generate Poem';
+        el('analyze-button').innerHTML = 'Sing4Me!';
     }
 
     var fileData = new FormData();
