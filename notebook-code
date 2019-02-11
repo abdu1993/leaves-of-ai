@@ -1,0 +1,1649 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%reload_ext autoreload\n",
+    "%autoreload 2\n",
+    "%matplotlib inline\n",
+    "from fastai.text import *\n",
+    "path = '''/home/paperspace/fastai/course-v3/nbs/dl1/music/'''"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Warning: Your Kaggle API key is readable by other users on this system! To fix this, you can run 'chmod 600 /home/paperspace/.kaggle/kaggle.json'\n",
+      "Downloading songlyrics.zip to /home/paperspace/fastai/course-v3/nbs/dl1/music\n",
+      " 91%|██████████████████████████████████▍   | 19.0M/21.0M [00:00<00:00, 41.1MB/s]\n",
+      "100%|██████████████████████████████████████| 21.0M/21.0M [00:00<00:00, 52.5MB/s]\n",
+      "Archive:  songlyrics.zip\n",
+      "  inflating: songdata.csv            \n",
+      "rm: cannot remove 'sopnglyrics.zip': No such file or directory\n"
+     ]
+    }
+   ],
+   "source": [
+    "!kaggle datasets download mousehead/songlyrics\n",
+    "!unzip songlyrics.zip\n",
+    "!rm -r songlyrics.zip"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Abdu songs-all-fit.ipynb\t      lyrics_total_lm\r\n",
+      "Abdu songs.ipynb\t\t      lyrics_total_lm_deduped\r\n",
+      "ArtistUrl.csv\t\t\t      lyrics_total_lm_deduped_no_chorus\r\n",
+      "every-song-you-have-heard-almost.zip  lyrics_total_lm_deduped_no_chorus_2\r\n",
+      "Lyrics1.csv\t\t\t      models\r\n",
+      "Lyrics2.csv\t\t\t      songdata.csv\r\n",
+      "lyrics_combined_df.pkl\t\t      songlyrics.zip\r\n",
+      "lyrics_combined_lm\t\t      taylor_swift_lyrics.csvfinal.csv\r\n",
+      "lyrics_total_df_clean_1.pkl\t      Untitled.ipynb\r\n",
+      "lyrics_total_df.pkl\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!ls"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "lyrics_1 = pd.read_csv(f'{path}Lyrics1.csv')\n",
+    "#print(lyrics_1.head())\n",
+    "\n",
+    "lyrics_2 = pd.read_csv(f'{path}Lyrics2.csv')\n",
+    "#print(lyrics_2.head())\n",
+    "\n",
+    "lyrics_total = lyrics_1.append(lyrics_2)\n",
+    "#print(lyrics_total.head())\n",
+    "\n",
+    "lyrics_total['Lyrics'] = lyrics_total['Lyrics'].str.replace('\\n',' . ', regex=False)\n",
+    "lyrics_total['Lyrics'] = lyrics_total['Lyrics'].str.replace('\\r','', regex=False)\n",
+    "#print(lyrics_total.head(), len(lyrics_total))\n",
+    "\n",
+    "lyrics_total.dropna(inplace=True)\n",
+    "lyrics_combined = lyrics_total[(lyrics_total.Band == 'Coldplay') | (lyrics_total.Band == 'Taylor Swift') | (lyrics_total.Band == 'Selena Gomez') |\n",
+    "                           (lyrics_total.Band == 'Sugarland') | (lyrics_total.Band == 'Lorde') | (lyrics_total.Band == 'Lana Del Rey') |\n",
+    "                           (lyrics_total.Band == 'Bob Dylan') | (lyrics_total.Band == 'Keane') | (lyrics_total.Band == 'Onerepublic') |\n",
+    "                           (lyrics_total.Band == 'Snow Patrol') | (lyrics_total.Band == 'Imagine Dragons') | (lyrics_total.Band == 'The Fray') |                           (lyrics_total.Band == 'Sugarland') | (lyrics_total.Band == 'Lorde') | (lyrics_total.Band == 'Lana Del Rey') |\n",
+    "                           (lyrics_total.Band == 'Ed Sheeran') | (lyrics_total.Band == 'Shawn Mendes') | (lyrics_total.Band == 'John Mayer') |\n",
+    "                           (lyrics_total.Band == 'Jason Myraz') |\n",
+    "                           (lyrics_total.Band == 'Colbie Calliat')]\n",
+    "\n",
+    "\n",
+    "lyrics_combined.drop(['Band','Song'], axis=1, inplace=True)\n",
+    "\n",
+    "print(lyrics_combined.head(), len(lyrics_combined))\n",
+    "\n",
+    "lyrics_combined.to_pickle('lyrics_combined_df.pkl')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "1478\n",
+      "                                                    text\n",
+      "17805  absolutely no one who knows me better . no one...\n",
+      "17806  they say this town . the stars stay up all nig...\n",
+      "17807  friday, payday, lordy got to get away . had it...\n",
+      "17808  oh i swear this town gets smaller everyday,  ....\n",
+      "17809  i was born in the heart of a hurricane season ...\n"
+     ]
+    }
+   ],
+   "source": [
+    "df = pd.read_pickle('lyrics_combined_df.pkl')\n",
+    "df.rename(columns={'Lyrics':'text'}, inplace=True)\n",
+    "print(len(df))\n",
+    "print(df.head())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from itertools import chain, groupby\n",
+    "\n",
+    "def stride(lst, offset, length):\n",
+    "    if offset:\n",
+    "        yield lst[:offset]\n",
+    "\n",
+    "    while True:\n",
+    "        yield lst[offset:offset + length]\n",
+    "        offset += length\n",
+    "        if offset >= len(lst):\n",
+    "            return\n",
+    "\n",
+    "def dedupe(lst):\n",
+    "    return list(chain(*[item[0] for item in groupby(lst)]))\n",
+    "\n",
+    "def cleanse(list_of_words, max_phrase_length):\n",
+    "    for length in range(1, max_phrase_length + 1):\n",
+    "        for offset in range(length):\n",
+    "            list_of_words = dedupe(stride(list_of_words, offset, length))\n",
+    "\n",
+    "    return list_of_words"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "                                                    text\n",
+      "17805  absolutely no one who knows me better no one t...\n",
+      "17806  they say this town the stars stay up all night...\n",
+      "17807  friday, payday, lordy got to get away had it w...\n",
+      "17808  oh i swear this town gets smaller everyday. an...\n",
+      "17809  i was born in the heart of a hurricane season ... 1478\n"
+     ]
+    }
+   ],
+   "source": [
+    "df['text'] = df['text'].astype(str)\n",
+    "df['text'] = df.text.str.lower()\n",
+    "df['text'] = df['text'].str.replace('\\n',',', regex=False)\n",
+    "df['text'] = df['text'].str.replace('\\r','', regex=False)\n",
+    "df['text'] = df['text'].str.replace('-', '', regex=False)\n",
+    "df['text'] = df['text'].str.replace('\\((.*?)\\)','',regex=True)\n",
+    "df['text'] = df['text'].str.replace('\\[(.*?)\\]','',regex=True)\n",
+    "df['text'] = df['text'].apply(lambda x : cleanse(x.split(), 5))\n",
+    "df['text'] = df['text'].apply(lambda x : \" \".join(x)) \n",
+    "print(df.head(), len(df))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "                                                    text\n",
+      "17805  absolutely no one who knows me better no one t...\n",
+      "17806  they say this town the stars stay up all night...\n",
+      "17807  friday, payday, lordy got to get away had it w...\n",
+      "17808  oh i swear this town gets smaller everyday. an...\n",
+      "17809  i was born in the heart of a hurricane season ...\n",
+      "17810  i got miles of trouble spreadin far and wide b...\n",
+      "17811  well, it's two miles east to west only four mi...\n",
+      "17812  monday, hard to wake up fill my coffee cup, i'...\n",
+      "17813  we drove all night to get to corpus christi my...\n",
+      "17814  go ahead and take your best shot. let 'er rip,...\n",
+      "17815  it ain't often i take time to answer calls on ...\n",
+      "17816  i was on a fast curve, lost my nerve on a dead...\n",
+      "17817  looking for an angel in these hills looking fo...\n",
+      "17818  there's a place i like to go cherry bombs and ...\n",
+      "17819  grew up on a tight rope learned to smile even ...\n",
+      "17820  cowboys ride into sunsets the good guy always ...\n",
+      "17821  mean girls well, i ain't a mean girl but i've ...\n",
+      "17822  little annie vickers is boarding up windows an...\n",
+      "17823  fifteen minutes left to throw me together for ...\n",
+      "17824  warm breeze blowin', long dirt road first time... 1478\n"
+     ]
+    }
+   ],
+   "source": [
+    "df['text'] = df['text'].apply(lambda x : cleanse(x.split(' '), 2))\n",
+    "df['text'] = df['text'].apply(lambda x : \" \".join(x)) \n",
+    "print(df.head(20), len(df))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "                                                    text\n",
+      "17805  absolutely no one who knows me better no one t...\n",
+      "17806  they say this town the stars stay up all night...\n",
+      "17807  friday, payday, lordy got to get away had it w...\n",
+      "17808  oh i swear this town gets smaller everyday. an...\n",
+      "17809  i was born in the heart of a hurricane season ...\n"
+     ]
+    }
+   ],
+   "source": [
+    "df['text'] = df['text'].str.replace(', ,', ',', regex=False)\n",
+    "df['text'] = df['text'].str.replace('. ,', '.', regex=False)\n",
+    "df['text'] = df['text'].str.replace(', .', '.', regex=False)\n",
+    "print(df.head())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "                                                    text\n",
+      "17805  absolutely no one who knows me better no one t...\n",
+      "17806  they say this town the stars stay up all night...\n",
+      "17807  friday, payday, lordy got to get away had it w...\n",
+      "17808  oh i swear this town gets smaller everyday. an...\n",
+      "17809  i was born in the heart of a hurricane season ...\n",
+      "17810  i got miles of trouble spreadin far and wide b...\n",
+      "17811  well, it's two miles east to west only four mi...\n",
+      "17812  monday, hard to wake up fill my coffee cup, i'...\n",
+      "17813  we drove all night to get to corpus christi my...\n",
+      "17814  go ahead and take your best shot. let 'er rip,...\n",
+      "17815  it ain't often i take time to answer calls on ...\n",
+      "17816  i was on a fast curve, lost my nerve on a dead...\n",
+      "17817  looking for an angel in these hills looking fo...\n",
+      "17818  there's a place i like to go cherry bombs and ...\n",
+      "17819  grew up on a tight rope learned to smile even ...\n",
+      "17820  cowboys ride into sunsets the good guy always ...\n",
+      "17821  mean girls well, i ain't a mean girl but i've ...\n",
+      "17822  little annie vickers is boarding up windows an...\n",
+      "17823  fifteen minutes left to throw me together for ...\n",
+      "17824  warm breeze blowin', long dirt road first time...\n",
+      "17825  it's written on our palms, and it's written on...\n",
+      "17826  i've packed a cooler and a change of clothes l...\n",
+      "17827  a salvation army band played and the children ...\n",
+      "17828  i don't want to get up baby. let's turn off th...\n",
+      "17829  my mama mapped out the road that she knows whi...\n",
+      "17830  i miss the sound of your voice i miss the rush...\n",
+      "17831  when the weight of the world breaks down so st...\n",
+      "17832  my heart's grown cold, there's not much left. ...\n",
+      "17833  missed my alarm clock ringing woke up telephon...\n",
+      "17834  what if i said yes what if i'd gone out that n...\n",
+      "17835  we said goodbye. tried her hand at magic. but ...\n",
+      "17836  a salvation army band played and the children ...\n",
+      "17837  is it the face of a child is it the thrill of ...\n",
+      "17838  gotta get a handle on the situation soul solut...\n",
+      "17839  one more well i heard steve earle had a lot of...\n",
+      "17840  radiator says 95 but i ain't felt a drop of he...\n",
+      "17841  today is my birthday and all that i want is to...\n",
+      "17842  snake oil and roses, pockets of dirt. hands of...\n",
+      "17843  what i'd give to bring you flowers what i'd gi...\n",
+      "17844  sometimes it's a pair of old faded denim, i kn...\n",
+      "17845  windows in new york city all dressed up with r...\n",
+      "17846  well, hello it's been a long time, and i wanna...\n",
+      "17847  christmas trees in window panes shimmering whe...\n",
+      "17848  it's christmas day and the snow is comin down ...\n",
+      "17849  every christmas i come back to this town i com...\n",
+      "17850  i broke my doll on kenny's head somebody snitc...\n",
+      "17851  o come, emmanuel and ransom captive israel tha...\n",
+      "17852  silent night, holy night all is calm, all is b...\n",
+      "17853  sleigh bells ring, are you listening in the la...\n",
+      "17854  to the left mmmm to the left everything you ow...\n"
+     ]
+    }
+   ],
+   "source": [
+    "df['text'] = df['text'].str.replace('\"', '', regex=False)\n",
+    "df['text'] = df['text'].str.replace(', ,', ',', regex=False)\n",
+    "df['text'] = df['text'].str.replace('. ,', '.', regex=False)\n",
+    "df['text'] = df['text'].str.replace(', .', '.', regex=False)\n",
+    "df['text'] = df['text'].str.replace(',,', ',', regex=False)\n",
+    "df['text'] = df['text'].str.replace('.,', '.', regex=False)\n",
+    "df['text'] = df['text'].str.replace(',.', '.', regex=False)\n",
+    "df['text'] = df['text'].str.replace('...', '.', regex=False)\n",
+    "df['text'] = df['text'].str.replace('? ,', '?', regex=False)\n",
+    "df['text'] = df['text'].str.replace(', ?', '?', regex=False)\n",
+    "df['text'] = df['text'].str.replace('?,', '?', regex=False)\n",
+    "df['text'] = df['text'].str.replace(',?', '?', regex=False)\n",
+    "df['text'] = df['text'].str.replace('''' ''', ' ', regex=False)\n",
+    "df['text'] = df['text'].str.replace(' . ', ' ', regex=False)\n",
+    "df['text'] = df['text'].astype(str)\n",
+    "df['text'] = df.text.str.lower()\n",
+    "print(df.head(50))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df.to_pickle('lyrics_combined_df.pkl')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "                                                    text\n",
+      "17805  absolutely no one who knows me better no one t...\n",
+      "17806  they say this town the stars stay up all night...\n",
+      "17807  friday, payday, lordy got to get away had it w...\n",
+      "17808  oh i swear this town gets smaller everyday. an...\n",
+      "17809  i was born in the heart of a hurricane season ...\n",
+      "17810  i got miles of trouble spreadin far and wide b...\n",
+      "17811  well, it's two miles east to west only four mi...\n",
+      "17812  monday, hard to wake up fill my coffee cup, i'...\n",
+      "17813  we drove all night to get to corpus christi my...\n",
+      "17814  go ahead and take your best shot. let 'er rip,...\n",
+      "17815  it ain't often i take time to answer calls on ...\n",
+      "17816  i was on a fast curve, lost my nerve on a dead...\n",
+      "17817  looking for an angel in these hills looking fo...\n",
+      "17818  there's a place i like to go cherry bombs and ...\n",
+      "17819  grew up on a tight rope learned to smile even ...\n",
+      "17820  cowboys ride into sunsets the good guy always ...\n",
+      "17821  mean girls well, i ain't a mean girl but i've ...\n",
+      "17822  little annie vickers is boarding up windows an...\n",
+      "17823  fifteen minutes left to throw me together for ...\n",
+      "17824  warm breeze blowin', long dirt road first time...\n",
+      "17825  it's written on our palms, and it's written on...\n",
+      "17826  i've packed a cooler and a change of clothes l...\n",
+      "17827  a salvation army band played and the children ...\n",
+      "17828  i don't want to get up baby. let's turn off th...\n",
+      "17829  my mama mapped out the road that she knows whi...\n",
+      "17830  i miss the sound of your voice i miss the rush...\n",
+      "17831  when the weight of the world breaks down so st...\n",
+      "17832  my heart's grown cold, there's not much left. ...\n",
+      "17833  missed my alarm clock ringing woke up telephon...\n",
+      "17834  what if i said yes what if i'd gone out that n...\n",
+      "17835  we said goodbye. tried her hand at magic. but ...\n",
+      "17836  a salvation army band played and the children ...\n",
+      "17837  is it the face of a child is it the thrill of ...\n",
+      "17838  gotta get a handle on the situation soul solut...\n",
+      "17839  one more well i heard steve earle had a lot of...\n",
+      "17840  radiator says 95 but i ain't felt a drop of he...\n",
+      "17841  today is my birthday and all that i want is to...\n",
+      "17842  snake oil and roses, pockets of dirt. hands of...\n",
+      "17843  what i'd give to bring you flowers what i'd gi...\n",
+      "17844  sometimes it's a pair of old faded denim, i kn... 1478\n"
+     ]
+    }
+   ],
+   "source": [
+    "df = pd.read_pickle('lyrics_combined_df.pkl')\n",
+    "df.rename(columns={'Lyrics':'text'}, inplace=True)\n",
+    "print(df.head(40), len(df))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "bs = 64"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "data = (TextList.from_df(df, path, cols='text')\n",
+    "                .random_split_by_pct(0.1)\n",
+    "                .label_for_lm()\n",
+    "                .databunch(bs=bs))\n",
+    "data.save('/app/static/data_lm')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<table>  <col width='5%'>  <col width='95%'>  <tr>\n",
+       "    <th>idx</th>\n",
+       "    <th>text</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>0</th>\n",
+       "    <th>you do it and do it one time . there you go pulling me right back in right back in , right back in and i know i 'm never letting this go i 'm stuck on you whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue some days</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>1</th>\n",
+       "    <th>a little closer baby . we can talk without the words hang a sign on the door , please do not . please do not disturb when i lay down in the evening all i really want to do . when i wake up , when i wake up in the morning baby . all i really want to do xxbos my mama mapped out the road that she knows</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>2</th>\n",
+       "    <th>smoke horizon wo n't give up the fight fire like lightening burnin up the night a smoke horizon wo n't give up the fight well , deep inside can you hear that call ? wakin your heart and shakin your walls where love is found , the nations fall a cry will rise above it all we are all we are , we are young ! shine like diamonds cut</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>3</th>\n",
+       "    <th>that i want her tell her that i need her tell her that she 's more than a onenight stand tell her that i love her more than anyone else if you do n't , then i 'll tell her myself and we 've got love in us so if the drink kill us we 're gon na dance all night till the floor xxunk if we talk outside i</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>4</th>\n",
+       "    <th>way and maybe you should learn to love her like , like the way you wanna be loved , hey i do it for the love , waiting on the gold rush keep it on the edge , smoking on a roll up when i see my friends , all they say is hold up and remember the time when we were in school , listening to grown ups did</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>5</th>\n",
+       "    <th>while but i 've got no plans at all to leave and would you take away my hopes and dreams ? just stay with me all my senses come to life while i 'm stumbling home as drunk as i have ever been and i 'll never leave again 'cause you are the only one and all my friends have gone to find another place to let their hearts collide</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>6</th>\n",
+       "    <th>when we got paid we 'd buy cheap spirits and drink them straight me and my friends have not thrown up in so long , oh how we 've grown but i ca n't wait to go home i 'm on my way driving at ninety down those country lanes singing to tiny dancer and i miss the way you make me feel , and it 's real we watched</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>7</th>\n",
+       "    <th>heard it , darling , you look perfect tonight well i found a woman , stronger than anyone i know she xxunk my dreams , i hope that someday i 'll share her home i found a love , to carry more than just my secrets to carry love , to carry children of our own we are still kids , but we 're so in love fighting against all</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>8</th>\n",
+       "    <th>me for anything you like and i no i do n't mind xxbos i do n't know your face no more or feel the touch that i adore i do n't know your face no more it 's just a place i 'm looking for we might as well be strangers in another town we might as well be living in a different world we might as well i do</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>9</th>\n",
+       "    <th>gun without a reason you understand i look out for you come rain , come shine what good does it do ? i guess i 'm a toy that is broken i guess we 're just older now who says the river ca n't leave its waters ? who says you walk in a line ? who says the city change its xxunk ? who says you 're mine ?</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>10</th>\n",
+       "    <th>'s further to fall down cos you fly so high i 've never seen such beauty i 've never seen such clear skies i 've never seen such high hopes i 've never seen such tired eyes and i wish that i could be everything you are down in the xxunk the city wakes turns on the tv as the xxunk breaks where the streets are burnt by the summer</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>11</th>\n",
+       "    <th>in anything you 'd have on me xxunk my teeth with bitter smiles and cigarettes torture me and let me watch you as you fuck him bury me in love until i suffocate 'cause it 's easier to make love than to crawl across the floor and beg for more after all this cold i 'm sure wo n't last for long the bible xxunk on each corner turn to</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>12</th>\n",
+       "    <th>have a choice even if you can not hear my voice i 'll be right beside you dear louder , louder and we 'll run for our lives i can hardly speak i understand why you ca n't raise your voice to say slower , slower we do n't have time for that all i want is to find an easier way to get out of our little heads have</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>13</th>\n",
+       "    <th>'m just as scared i just wanna watch you sleep as you lie here beside me so close your eyes , i 'll guard the door and when you wake , you 'll wake with me and when you wake you 'll so now i 'm telling you the reason i 'm all messed up just have to look me in the eyes and i fall apart please let me</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>14</th>\n",
+       "    <th>marked the earth it 's xxunk was frozen glass you slip into my arms and you quickly correct yourself your freezing speech bubbles seem to hold your words aloft i want the smoky clouds of laughter to swim about me forever more i will race you to the waterside and from the edge of ireland shout out loud so they could hear it in america it 's all for you</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>15</th>\n",
+       "    <th>it in my bones like oh whoa oh something big is happening whoa oh whoa something big i feel it happening whoa xxbos time up in the middle of a daydream call you up ‘ cause the time is wasting let ’s drive we got nowhere to go fear not , yeah , welcome to the jungle think fast , move quick , do n’t stumble we ca n’t do</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>16</th>\n",
+       "    <th>last summer tell me where you 've been i know , i know ca n't seem to let you go , ca n't seem to keep you close ca n't seem to let you go , ca n't seem to keep you close tell me where you 've been lately tell me where you 've been lately tell me where you 've been lately tell me where you 've been</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>17</th>\n",
+       "    <th>kissed i felt like that kid in love , yeah and i know that i 'll probably regret it i now wish i never said this at all oh i hate to hurt you but i got to be honest i ca n't give you what you need , oh you deserve more than i can promise and i 'm just tryna , i 'm just tryna baby , i</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>18</th>\n",
+       "    <th>else , it 's in the blood their xxunk blinking like the lights , in the xxunk where we all sit and do nothing and love it and everything works out so good i wear the robe like no one could and everything works out so good i wear the robe like no one could and everything works out so good i wear the robe like no one could and</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>19</th>\n",
+       "    <th>over you could feel it all around everybody 's out to get you do n't you let it drag you down 'cause if you ever feel neglected if you think that all is lost i 'll be counting up my demons yeah hoping everything 's not lost if you ever feel neglected if you think all is lost i 'll be counting up my demons yeah hoping everything 's not</th>\n",
+       "  </tr>\n",
+       "</table>\n"
+      ],
+      "text/plain": [
+       "<IPython.core.display.HTML object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "data_lm = TextLMDataBunch.load(path, 'leaves-of-ai/app/static/data_lm', bs=bs)\n",
+    "data_lm.show_batch(rows=20)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "learn = language_model_learner(data_lm, AWD_LSTM, pretrained=URLs.WT103_1, drop_mult=0.4)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "LR Finder is complete, type {learner_name}.recorder.plot() to see the graph.\n",
+      "Min numerical gradient: 3.98E-02\n"
+     ]
+    },
+    {
+     "data": {
+      "image/png": "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\n",
+      "text/plain": [
+       "<Figure size 432x288 with 1 Axes>"
+      ]
+     },
+     "metadata": {
+      "needs_background": "light"
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "learn.lr_find()\n",
+    "learn.recorder.plot()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "Total time: 00:38 <p><table style='width:300px; margin-bottom:10px'>\n",
+       "  <tr>\n",
+       "    <th>epoch</th>\n",
+       "    <th>train_loss</th>\n",
+       "    <th>valid_loss</th>\n",
+       "    <th>accuracy</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>1</th>\n",
+       "    <th>4.857316</th>\n",
+       "    <th>4.414676</th>\n",
+       "    <th>0.197718</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>2</th>\n",
+       "    <th>4.301091</th>\n",
+       "    <th>4.240213</th>\n",
+       "    <th>0.213145</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>3</th>\n",
+       "    <th>3.850927</th>\n",
+       "    <th>4.161656</th>\n",
+       "    <th>0.223735</th>\n",
+       "  </tr>\n",
+       "</table>\n"
+      ],
+      "text/plain": [
+       "<IPython.core.display.HTML object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "learn.fit_one_cycle(3, 3e-2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "LR Finder is complete, type {learner_name}.recorder.plot() to see the graph.\n",
+      "Min numerical gradient: 9.12E-07\n"
+     ]
+    },
+    {
+     "data": {
+      "image/png": "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\n",
+      "text/plain": [
+       "<Figure size 432x288 with 1 Axes>"
+      ]
+     },
+     "metadata": {
+      "needs_background": "light"
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "learn.unfreeze()\n",
+    "learn.lr_find()\n",
+    "learn.recorder.plot()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "Total time: 02:55 <p><table style='width:300px; margin-bottom:10px'>\n",
+       "  <tr>\n",
+       "    <th>epoch</th>\n",
+       "    <th>train_loss</th>\n",
+       "    <th>valid_loss</th>\n",
+       "    <th>accuracy</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>1</th>\n",
+       "    <th>3.573188</th>\n",
+       "    <th>4.158583</th>\n",
+       "    <th>0.225223</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>2</th>\n",
+       "    <th>3.546523</th>\n",
+       "    <th>4.115327</th>\n",
+       "    <th>0.230828</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>3</th>\n",
+       "    <th>3.438178</th>\n",
+       "    <th>4.074120</th>\n",
+       "    <th>0.239658</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>4</th>\n",
+       "    <th>3.332717</th>\n",
+       "    <th>4.042652</th>\n",
+       "    <th>0.246801</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>5</th>\n",
+       "    <th>3.235477</th>\n",
+       "    <th>4.016857</th>\n",
+       "    <th>0.250298</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>6</th>\n",
+       "    <th>3.137173</th>\n",
+       "    <th>3.997612</th>\n",
+       "    <th>0.255952</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>7</th>\n",
+       "    <th>3.058514</th>\n",
+       "    <th>3.989526</th>\n",
+       "    <th>0.259474</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>8</th>\n",
+       "    <th>3.022945</th>\n",
+       "    <th>3.979706</th>\n",
+       "    <th>0.261830</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>9</th>\n",
+       "    <th>2.976565</th>\n",
+       "    <th>3.980662</th>\n",
+       "    <th>0.261359</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>10</th>\n",
+       "    <th>2.944232</th>\n",
+       "    <th>3.983280</th>\n",
+       "    <th>0.260689</th>\n",
+       "  </tr>\n",
+       "</table>\n"
+      ],
+      "text/plain": [
+       "<IPython.core.display.HTML object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "learn.fit_one_cycle(10, slice(1e-4,1e-3), moms=(0.8,0.7))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "learn.save('Initial_fit_render')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "learn = language_model_learner(data_lm, AWD_LSTM, pretrained=True, drop_mult=0.3)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "LanguageLearner(data=TextLMDataBunch;\n",
+       "\n",
+       "Train: LabelList (1331 items)\n",
+       "x: LMTextList\n",
+       "xxbos xxunk no one who knows me better no one that can make me feel so good how did we stay so long together when everybody said we never would and just when i start to think they 're right that love has died there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time . there you go pulling me right back in right back in , right back in and i know i 'm never letting this go i 'm stuck on you whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue some days i do n't feel like trying some days you know i wanna just give up when it does n't matter who 's right fight about it all night had enough you give me that look i 'm sorry baby let 's make up you do that thing that makes me laugh and just like that there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time there you go pulling me right back in right back in , right back in and i know i 'm never letting this go i 'm stuck on you whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh you almost stay out too stuck together from the xxunk whoaoh , whoaoh feeling kinda sick just a spoon full of sugar make it better real quick i say , whoaoh , whoaoh xxunk gon na do with that whoaoh , whoaoh come on over here with that sugar xxunk sweet stuff come on give me that stuff everybody want some xxunk that get stuck up in your head whoaoh , whoaoh up in your head whoaoh , whoaoh up in your head whoaoh , whoaoh up in your head whoaoh , whoaoh stuck like glue you and me together say it 's all i wanna do i said there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time there you go pulling me right back in right back in , right back in and i know i 'm never letting this go there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time there you go pulling me right back in right back in , right back in and i know i 'm never letting this go i 'm stuck on you whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue,xxbos they say this town the stars stay up all night do n't know , ca n't see 'em for the glow of the neon lights and it 's a long way from here to the place where the home fires burn well , it 's two thousand miles and one left turn dear mom and dad . please send money , xxunk so broke that it ai n't funny . i do n't need much just enough to get me through . please do n't worry cause i 'm alright i 'm playing here at the bar tonight . this time i 'm gon na make our dreams come true well i love you more than anything in the world . love . your baby girl black top , blue sky big town full of little white lies everybody 's your friend , you can never be sure they promise fancy cars and diamond rings all xxunk of xxunk things girl , you 'll remember what your knees are for dear mom and dad . please send money , xxunk so broke that it ai n't funny . i do n't need much just enough to get me through . please do n't worry cause i 'm alright i 'm playing here at the bar tonight . this time i 'm gon na make our dreams come true well i love you more than anything in the world . love . your baby girl i know that i 'm on my way i can tell every time i play and i know it 's worth all the dues i pay when i can write to you and say dear mom and dad . i 'll send money , i 'm so rich that it ai n't funny it ought ta be more than enough to get you through please do n't worry cause i 'm alright i 'm staying here at the xxunk tonight what ta ya know we made our dreams come true ! and there are fancy cars and diamond rings but you know that they do n't mean a thing they all add up to nothing compared to you well , remember me in ribbons and curls i still love you more than anything in the world . love . your baby girl,xxbos friday , xxunk , xxunk got to get away had it with the wife thing , living on a shoe string what 's a poor girl got to do just to have some fun ? all these years without any help guess what , honey , clothes just do n't wash themselves ! neither do dishes , neither does the bathroom floor so , now if anyone asks , not that they would i 'll be down in mississippi and up to no good no more , what a bore , had enough , i 'm out the door headed for a breakdown , had it with the small town gon na call lisa , gon na call xxunk sue now we 're gon na let it roll , gon na let it rip gon na get us a nice room down on the strip not that we 'll need it , there wo n't be any sleepin tonight so , now if anyone asks , not that they would we 'll be down in mississippi and up to no good hammer down , here we go runnin for the riverboat all you 're gon na see is xxunk and xxunk luck 's about to change for these three queens tired of getting xxunk , deal us up kings snake eyes , roll the dice , double down and hit me twice xxunk in the big chips , gon na leave a big tip hotter than a two dollar pistol , baby , i 'm on fire so , now if anyone asks , not that they would i 'll be down in mississippi and up to no good if anyone asks , not that they would i 'll be down in mississippi and up to no good,xxbos oh i swear this town gets smaller everyday . and i 'm waiting for my chance . i 'm gon na break away . i 'm so sick and tired of being told what 's good for me . people got lots of ideas , of who i 'm supposed to be . angel carry me , oh so far away . may my body never , touch the ground . and if i promise you that i 'll be back someday . will you set me free so i can fly away ? fly away , fly away well most folks here well they do n't dig too deep . they ca n't dream too big cause they 've got fields to keep i could walk away and leave my family . or get buried alive in this xxunk . i want to sleep under a different piece of sky i want to live a little bit before i die i want to be so close to heaven i see angels fly away,xxbos i was born in the heart of a hurricane season in the house where my mama was raised that old september wind feels just like a long lost friend and i want to run through those cottonwood trees fall asleep in a big bed of fresh fallen leaves and in every wind that blows there 's a song of letting go it 's not goodbye , it 's hello when we met underneath the blue skies of summer and those summer skies turn into fall that sweet september wind made us so much more than friends on night and we ran through those cottonwood trees we made love in a big bed of fresh fallen leaves and in every wind that blows there 's an innocence that knows it 's not goodbye , it 's hello in the moment that one thing ends is the same time that one begins and return as we must we are ashes to dust , amen . when the days of my youth have all faded and the memories are all that remain let that old september wind take me back to where i 've been so i can run through those cottonwood trees and remember the smell of those fresh fallen leaves now in every wind that blows there 's a part of me that knows it 's not goodbye , it 's hello\n",
+       "y: LMLabelList\n",
+       ",,,,\n",
+       "Path: /home/paperspace/fastai/course-v3/nbs/dl1/music;\n",
+       "\n",
+       "Valid: LabelList (147 items)\n",
+       "x: LMTextList\n",
+       "xxbos seems like only yesterday i left my mind behind down in the gypsy cafe with a friend of mine she sat with a baby heavy on her knee yet spoke of life most free from xxunk with eyes that showed no trace of misery a phrase in connection first with she i heard that love is just a xxunk word outside a rambling xxunk window cats xxunk to the break of day me , i kept my mouth shut , too to you i had no words to say my xxunk was limited and xxunk you were talking while i hid to the one who was the father of your kid you probably did n't think i did , but i heard you say that love is just a xxunk word i said goodbye xxunk pushed towards things in my own games drifting in and out of xxunk xxunk by name searching for my double , looking for complete xxunk to the core though i tried and failed at finding any door i must have thought that there was nothing more xxunk than that love is just a xxunk word though i never knew just what you meant when you were speaking to your man i can only think in xxunk of me and now i understand after waking enough times to think i see the holy kiss that 's supposed to last eternity blow up in smoke , its destiny falls on strangers , xxunk free yes , i know now , xxunk are only set by me and i do not really need to be assured that love is just a xxunk word,xxbos i 've been a xxunk for seventeen long years i 've spent all my money on whiskey and beer i go to some hollow and sit at my still and if whiskey do n't kill me then i do n't know what will i go to some xxunk and drink with my friends where the women ca n't follow and see what i spend god bless them pretty women i wish they was mine their breath is as sweet the dew on the vine let me eat when i am hungry let me drink when i am dry a dollar when i am xxunk religion when i die the whole world 's a bottle and life 's but a xxunk when the bottle gets empty it sure ai n't worth a damn,xxbos if you see her , say hello . she might be in xxunk she left here last early spring is livin there , i hear say for me that i 'm all right though things get kind of slow she might think that i 've forgotten her do n't tell her it is n't so we had a xxunk like lovers often will and to think of how she left that night it still brings me a chill and though our xxunk it pierced me to the heart she still lives inside of me we 've never been apart if you get close to her kiss her once for me i always have xxunk her for doin what she did and gettin free oh , whatever makes her happy i wo n't stand in the way though the bitter taste still xxunk on from the night i tried to make her stay i see a lot of people as i make the xxunk and i hear her name here and there as i go from town to town and i 've never xxunk used to it i 've just learned to turn it off either i 'm too xxunk or else i 'm gettin soft sundown , yellow moon i xxunk the past i know every scene by heart they all went by so fast if she 's xxunk back this way i 'm not that hard to find tell her she can look me up if she 's got the time,xxbos it 's written on our palms , and it 's written on our hearts it 's written in our songs , and it 's written in the stars sometimes all we can do is stand up tall when they 're standing in line just to watch us fall whoa we ca n't forget , these are the days whoa , do n't be afraid we ca n't forget , these are the days well , we got each other , and that 's all we need from here on out it 's just you and me two xxunk hearts up against the world that do n't stand a chance against this boy and girl we xxunk 'em down , fought bigger xxunk and i know , babe , we 're gon na be alright well , it feels like we 're living from pay check to check and we wake up wondering what might happen next yeah , sometimes it feels like we wo n't make it through but the hard times pass like the good ones do baby , wrap your fingers and hold on tight i 'll be right here beside you tonight baby , climb up here watch the city glow let 's make a wish on the xxunk below we 're making moments that we wo n't forget and feeling ones that have n't happened yet whoa do n't be afraid we ca n't forget these are the days,xxbos i 'm sorry , mother i 'm sorry , i let you down well , these days i 'm fine no these days i tend to lie i 'll take the west train , just by the side of xxunk just by my left brain , just by the side of the tin man i 'm sorry , brother i 'm sorry , i let cha down well , these days you 're fine no these days you tend to lie you 'll take the west train , just by the side of xxunk just by your left brain , just by the side of the tin man your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried but i keep coming up short i 'm sorry , lover you 're sorry , i bring you down well , these days i try and these days i tend to lie kinda thought i was a mystery and then i thought i was n't meant to be you said yourself xxunk , xxunk you were all alone your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried but the rain wo n't fall for the both of us the sun wo n't shine on the both of us believe me when i say , that i would n't have it any other way your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried but i wo n't wait much longer 'cause these walls they 're crashing down and i wo n't wait much longer 'cause these walls they 're crashing down and i keep coming up short\n",
+       "y: LMLabelList\n",
+       ",,,,\n",
+       "Path: /home/paperspace/fastai/course-v3/nbs/dl1/music;\n",
+       "\n",
+       "Test: None, model=SequentialRNN(\n",
+       "  (0): AWD_LSTM(\n",
+       "    (encoder): Embedding(5311, 400, padding_idx=1)\n",
+       "    (encoder_dp): EmbeddingDropout(\n",
+       "      (emb): Embedding(5311, 400, padding_idx=1)\n",
+       "    )\n",
+       "    (rnns): ModuleList(\n",
+       "      (0): WeightDropout(\n",
+       "        (module): LSTM(400, 1150, batch_first=True)\n",
+       "      )\n",
+       "      (1): WeightDropout(\n",
+       "        (module): LSTM(1150, 1150, batch_first=True)\n",
+       "      )\n",
+       "      (2): WeightDropout(\n",
+       "        (module): LSTM(1150, 400, batch_first=True)\n",
+       "      )\n",
+       "    )\n",
+       "    (input_dp): RNNDropout()\n",
+       "    (hidden_dps): ModuleList(\n",
+       "      (0): RNNDropout()\n",
+       "      (1): RNNDropout()\n",
+       "      (2): RNNDropout()\n",
+       "    )\n",
+       "  )\n",
+       "  (1): LinearDecoder(\n",
+       "    (decoder): Linear(in_features=400, out_features=5311, bias=True)\n",
+       "    (output_dp): RNNDropout()\n",
+       "  )\n",
+       "), opt_func=functools.partial(<class 'torch.optim.adam.Adam'>, betas=(0.9, 0.99)), loss_func=FlattenedLoss of CrossEntropyLoss(), metrics=[<function accuracy at 0x7fe237b167b8>], true_wd=True, bn_wd=True, wd=0.01, train_bn=True, path=PosixPath('/home/paperspace/fastai/course-v3/nbs/dl1/music'), model_dir='models', callback_fns=[<class 'fastai.basic_train.Recorder'>], callbacks=[RNNTrainer\n",
+       "learn: LanguageLearner(data=TextLMDataBunch;\n",
+       "\n",
+       "Train: LabelList (1331 items)\n",
+       "x: LMTextList\n",
+       "xxbos xxunk no one who knows me better no one that can make me feel so good how did we stay so long together when everybody said we never would and just when i start to think they 're right that love has died there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time . there you go pulling me right back in right back in , right back in and i know i 'm never letting this go i 'm stuck on you whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue some days i do n't feel like trying some days you know i wanna just give up when it does n't matter who 's right fight about it all night had enough you give me that look i 'm sorry baby let 's make up you do that thing that makes me laugh and just like that there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time there you go pulling me right back in right back in , right back in and i know i 'm never letting this go i 'm stuck on you whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh you almost stay out too stuck together from the xxunk whoaoh , whoaoh feeling kinda sick just a spoon full of sugar make it better real quick i say , whoaoh , whoaoh xxunk gon na do with that whoaoh , whoaoh come on over here with that sugar xxunk sweet stuff come on give me that stuff everybody want some xxunk that get stuck up in your head whoaoh , whoaoh up in your head whoaoh , whoaoh up in your head whoaoh , whoaoh up in your head whoaoh , whoaoh stuck like glue you and me together say it 's all i wanna do i said there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time there you go pulling me right back in right back in , right back in and i know i 'm never letting this go there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time there you go pulling me right back in right back in , right back in and i know i 'm never letting this go i 'm stuck on you whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue,xxbos they say this town the stars stay up all night do n't know , ca n't see 'em for the glow of the neon lights and it 's a long way from here to the place where the home fires burn well , it 's two thousand miles and one left turn dear mom and dad . please send money , xxunk so broke that it ai n't funny . i do n't need much just enough to get me through . please do n't worry cause i 'm alright i 'm playing here at the bar tonight . this time i 'm gon na make our dreams come true well i love you more than anything in the world . love . your baby girl black top , blue sky big town full of little white lies everybody 's your friend , you can never be sure they promise fancy cars and diamond rings all xxunk of xxunk things girl , you 'll remember what your knees are for dear mom and dad . please send money , xxunk so broke that it ai n't funny . i do n't need much just enough to get me through . please do n't worry cause i 'm alright i 'm playing here at the bar tonight . this time i 'm gon na make our dreams come true well i love you more than anything in the world . love . your baby girl i know that i 'm on my way i can tell every time i play and i know it 's worth all the dues i pay when i can write to you and say dear mom and dad . i 'll send money , i 'm so rich that it ai n't funny it ought ta be more than enough to get you through please do n't worry cause i 'm alright i 'm staying here at the xxunk tonight what ta ya know we made our dreams come true ! and there are fancy cars and diamond rings but you know that they do n't mean a thing they all add up to nothing compared to you well , remember me in ribbons and curls i still love you more than anything in the world . love . your baby girl,xxbos friday , xxunk , xxunk got to get away had it with the wife thing , living on a shoe string what 's a poor girl got to do just to have some fun ? all these years without any help guess what , honey , clothes just do n't wash themselves ! neither do dishes , neither does the bathroom floor so , now if anyone asks , not that they would i 'll be down in mississippi and up to no good no more , what a bore , had enough , i 'm out the door headed for a breakdown , had it with the small town gon na call lisa , gon na call xxunk sue now we 're gon na let it roll , gon na let it rip gon na get us a nice room down on the strip not that we 'll need it , there wo n't be any sleepin tonight so , now if anyone asks , not that they would we 'll be down in mississippi and up to no good hammer down , here we go runnin for the riverboat all you 're gon na see is xxunk and xxunk luck 's about to change for these three queens tired of getting xxunk , deal us up kings snake eyes , roll the dice , double down and hit me twice xxunk in the big chips , gon na leave a big tip hotter than a two dollar pistol , baby , i 'm on fire so , now if anyone asks , not that they would i 'll be down in mississippi and up to no good if anyone asks , not that they would i 'll be down in mississippi and up to no good,xxbos oh i swear this town gets smaller everyday . and i 'm waiting for my chance . i 'm gon na break away . i 'm so sick and tired of being told what 's good for me . people got lots of ideas , of who i 'm supposed to be . angel carry me , oh so far away . may my body never , touch the ground . and if i promise you that i 'll be back someday . will you set me free so i can fly away ? fly away , fly away well most folks here well they do n't dig too deep . they ca n't dream too big cause they 've got fields to keep i could walk away and leave my family . or get buried alive in this xxunk . i want to sleep under a different piece of sky i want to live a little bit before i die i want to be so close to heaven i see angels fly away,xxbos i was born in the heart of a hurricane season in the house where my mama was raised that old september wind feels just like a long lost friend and i want to run through those cottonwood trees fall asleep in a big bed of fresh fallen leaves and in every wind that blows there 's a song of letting go it 's not goodbye , it 's hello when we met underneath the blue skies of summer and those summer skies turn into fall that sweet september wind made us so much more than friends on night and we ran through those cottonwood trees we made love in a big bed of fresh fallen leaves and in every wind that blows there 's an innocence that knows it 's not goodbye , it 's hello in the moment that one thing ends is the same time that one begins and return as we must we are ashes to dust , amen . when the days of my youth have all faded and the memories are all that remain let that old september wind take me back to where i 've been so i can run through those cottonwood trees and remember the smell of those fresh fallen leaves now in every wind that blows there 's a part of me that knows it 's not goodbye , it 's hello\n",
+       "y: LMLabelList\n",
+       ",,,,\n",
+       "Path: /home/paperspace/fastai/course-v3/nbs/dl1/music;\n",
+       "\n",
+       "Valid: LabelList (147 items)\n",
+       "x: LMTextList\n",
+       "xxbos seems like only yesterday i left my mind behind down in the gypsy cafe with a friend of mine she sat with a baby heavy on her knee yet spoke of life most free from xxunk with eyes that showed no trace of misery a phrase in connection first with she i heard that love is just a xxunk word outside a rambling xxunk window cats xxunk to the break of day me , i kept my mouth shut , too to you i had no words to say my xxunk was limited and xxunk you were talking while i hid to the one who was the father of your kid you probably did n't think i did , but i heard you say that love is just a xxunk word i said goodbye xxunk pushed towards things in my own games drifting in and out of xxunk xxunk by name searching for my double , looking for complete xxunk to the core though i tried and failed at finding any door i must have thought that there was nothing more xxunk than that love is just a xxunk word though i never knew just what you meant when you were speaking to your man i can only think in xxunk of me and now i understand after waking enough times to think i see the holy kiss that 's supposed to last eternity blow up in smoke , its destiny falls on strangers , xxunk free yes , i know now , xxunk are only set by me and i do not really need to be assured that love is just a xxunk word,xxbos i 've been a xxunk for seventeen long years i 've spent all my money on whiskey and beer i go to some hollow and sit at my still and if whiskey do n't kill me then i do n't know what will i go to some xxunk and drink with my friends where the women ca n't follow and see what i spend god bless them pretty women i wish they was mine their breath is as sweet the dew on the vine let me eat when i am hungry let me drink when i am dry a dollar when i am xxunk religion when i die the whole world 's a bottle and life 's but a xxunk when the bottle gets empty it sure ai n't worth a damn,xxbos if you see her , say hello . she might be in xxunk she left here last early spring is livin there , i hear say for me that i 'm all right though things get kind of slow she might think that i 've forgotten her do n't tell her it is n't so we had a xxunk like lovers often will and to think of how she left that night it still brings me a chill and though our xxunk it pierced me to the heart she still lives inside of me we 've never been apart if you get close to her kiss her once for me i always have xxunk her for doin what she did and gettin free oh , whatever makes her happy i wo n't stand in the way though the bitter taste still xxunk on from the night i tried to make her stay i see a lot of people as i make the xxunk and i hear her name here and there as i go from town to town and i 've never xxunk used to it i 've just learned to turn it off either i 'm too xxunk or else i 'm gettin soft sundown , yellow moon i xxunk the past i know every scene by heart they all went by so fast if she 's xxunk back this way i 'm not that hard to find tell her she can look me up if she 's got the time,xxbos it 's written on our palms , and it 's written on our hearts it 's written in our songs , and it 's written in the stars sometimes all we can do is stand up tall when they 're standing in line just to watch us fall whoa we ca n't forget , these are the days whoa , do n't be afraid we ca n't forget , these are the days well , we got each other , and that 's all we need from here on out it 's just you and me two xxunk hearts up against the world that do n't stand a chance against this boy and girl we xxunk 'em down , fought bigger xxunk and i know , babe , we 're gon na be alright well , it feels like we 're living from pay check to check and we wake up wondering what might happen next yeah , sometimes it feels like we wo n't make it through but the hard times pass like the good ones do baby , wrap your fingers and hold on tight i 'll be right here beside you tonight baby , climb up here watch the city glow let 's make a wish on the xxunk below we 're making moments that we wo n't forget and feeling ones that have n't happened yet whoa do n't be afraid we ca n't forget these are the days,xxbos i 'm sorry , mother i 'm sorry , i let you down well , these days i 'm fine no these days i tend to lie i 'll take the west train , just by the side of xxunk just by my left brain , just by the side of the tin man i 'm sorry , brother i 'm sorry , i let cha down well , these days you 're fine no these days you tend to lie you 'll take the west train , just by the side of xxunk just by your left brain , just by the side of the tin man your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried but i keep coming up short i 'm sorry , lover you 're sorry , i bring you down well , these days i try and these days i tend to lie kinda thought i was a mystery and then i thought i was n't meant to be you said yourself xxunk , xxunk you were all alone your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried but the rain wo n't fall for the both of us the sun wo n't shine on the both of us believe me when i say , that i would n't have it any other way your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried but i wo n't wait much longer 'cause these walls they 're crashing down and i wo n't wait much longer 'cause these walls they 're crashing down and i keep coming up short\n",
+       "y: LMLabelList\n",
+       ",,,,\n",
+       "Path: /home/paperspace/fastai/course-v3/nbs/dl1/music;\n",
+       "\n",
+       "Test: None, model=SequentialRNN(\n",
+       "  (0): AWD_LSTM(\n",
+       "    (encoder): Embedding(5311, 400, padding_idx=1)\n",
+       "    (encoder_dp): EmbeddingDropout(\n",
+       "      (emb): Embedding(5311, 400, padding_idx=1)\n",
+       "    )\n",
+       "    (rnns): ModuleList(\n",
+       "      (0): WeightDropout(\n",
+       "        (module): LSTM(400, 1150, batch_first=True)\n",
+       "      )\n",
+       "      (1): WeightDropout(\n",
+       "        (module): LSTM(1150, 1150, batch_first=True)\n",
+       "      )\n",
+       "      (2): WeightDropout(\n",
+       "        (module): LSTM(1150, 400, batch_first=True)\n",
+       "      )\n",
+       "    )\n",
+       "    (input_dp): RNNDropout()\n",
+       "    (hidden_dps): ModuleList(\n",
+       "      (0): RNNDropout()\n",
+       "      (1): RNNDropout()\n",
+       "      (2): RNNDropout()\n",
+       "    )\n",
+       "  )\n",
+       "  (1): LinearDecoder(\n",
+       "    (decoder): Linear(in_features=400, out_features=5311, bias=True)\n",
+       "    (output_dp): RNNDropout()\n",
+       "  )\n",
+       "), opt_func=functools.partial(<class 'torch.optim.adam.Adam'>, betas=(0.9, 0.99)), loss_func=FlattenedLoss of CrossEntropyLoss(), metrics=[<function accuracy at 0x7fe237b167b8>], true_wd=True, bn_wd=True, wd=0.01, train_bn=True, path=PosixPath('/home/paperspace/fastai/course-v3/nbs/dl1/music'), model_dir='models', callback_fns=[<class 'fastai.basic_train.Recorder'>], callbacks=[...], layer_groups=[Sequential(\n",
+       "  (0): WeightDropout(\n",
+       "    (module): LSTM(400, 1150, batch_first=True)\n",
+       "  )\n",
+       "  (1): RNNDropout()\n",
+       "), Sequential(\n",
+       "  (0): WeightDropout(\n",
+       "    (module): LSTM(1150, 1150, batch_first=True)\n",
+       "  )\n",
+       "  (1): RNNDropout()\n",
+       "), Sequential(\n",
+       "  (0): WeightDropout(\n",
+       "    (module): LSTM(1150, 400, batch_first=True)\n",
+       "  )\n",
+       "  (1): RNNDropout()\n",
+       "), Sequential(\n",
+       "  (0): Embedding(5311, 400, padding_idx=1)\n",
+       "  (1): EmbeddingDropout(\n",
+       "    (emb): Embedding(5311, 400, padding_idx=1)\n",
+       "  )\n",
+       "  (2): LinearDecoder(\n",
+       "    (decoder): Linear(in_features=400, out_features=5311, bias=True)\n",
+       "    (output_dp): RNNDropout()\n",
+       "  )\n",
+       ")])\n",
+       "alpha: 2.0\n",
+       "beta: 1.0], layer_groups=[Sequential(\n",
+       "  (0): WeightDropout(\n",
+       "    (module): LSTM(400, 1150, batch_first=True)\n",
+       "  )\n",
+       "  (1): RNNDropout()\n",
+       "), Sequential(\n",
+       "  (0): WeightDropout(\n",
+       "    (module): LSTM(1150, 1150, batch_first=True)\n",
+       "  )\n",
+       "  (1): RNNDropout()\n",
+       "), Sequential(\n",
+       "  (0): WeightDropout(\n",
+       "    (module): LSTM(1150, 400, batch_first=True)\n",
+       "  )\n",
+       "  (1): RNNDropout()\n",
+       "), Sequential(\n",
+       "  (0): Embedding(5311, 400, padding_idx=1)\n",
+       "  (1): EmbeddingDropout(\n",
+       "    (emb): Embedding(5311, 400, padding_idx=1)\n",
+       "  )\n",
+       "  (2): LinearDecoder(\n",
+       "    (decoder): Linear(in_features=400, out_features=5311, bias=True)\n",
+       "    (output_dp): RNNDropout()\n",
+       "  )\n",
+       ")])"
+      ]
+     },
+     "execution_count": 17,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "learn.load('Initial_fit_render')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "LR Finder is complete, type {learner_name}.recorder.plot() to see the graph.\n",
+      "Min numerical gradient: 2.09E-05\n"
+     ]
+    },
+    {
+     "data": {
+      "image/png": "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\n",
+      "text/plain": [
+       "<Figure size 432x288 with 1 Axes>"
+      ]
+     },
+     "metadata": {
+      "needs_background": "light"
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "learn.unfreeze()\n",
+    "learn.lr_find()\n",
+    "learn.recorder.plot()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "Total time: 01:26 <p><table style='width:300px; margin-bottom:10px'>\n",
+       "  <tr>\n",
+       "    <th>epoch</th>\n",
+       "    <th>train_loss</th>\n",
+       "    <th>valid_loss</th>\n",
+       "    <th>accuracy</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>1</th>\n",
+       "    <th>2.859836</th>\n",
+       "    <th>3.988062</th>\n",
+       "    <th>0.262698</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>2</th>\n",
+       "    <th>2.838120</th>\n",
+       "    <th>3.968768</th>\n",
+       "    <th>0.267684</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>3</th>\n",
+       "    <th>2.745850</th>\n",
+       "    <th>3.943497</th>\n",
+       "    <th>0.271875</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>4</th>\n",
+       "    <th>2.670281</th>\n",
+       "    <th>3.949076</th>\n",
+       "    <th>0.274033</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>5</th>\n",
+       "    <th>2.608480</th>\n",
+       "    <th>3.954669</th>\n",
+       "    <th>0.274926</th>\n",
+       "  </tr>\n",
+       "</table>\n"
+      ],
+      "text/plain": [
+       "<IPython.core.display.HTML object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "learn.fit_one_cycle(5, slice(1e-4,1e-3), moms=(0.8,0.7))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "Total time: 00:52 <p><table style='width:300px; margin-bottom:10px'>\n",
+       "  <tr>\n",
+       "    <th>epoch</th>\n",
+       "    <th>train_loss</th>\n",
+       "    <th>valid_loss</th>\n",
+       "    <th>accuracy</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>1</th>\n",
+       "    <th>2.649945</th>\n",
+       "    <th>3.931965</th>\n",
+       "    <th>0.278299</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>2</th>\n",
+       "    <th>2.535975</th>\n",
+       "    <th>3.892663</th>\n",
+       "    <th>0.290129</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>3</th>\n",
+       "    <th>2.325736</th>\n",
+       "    <th>3.901695</th>\n",
+       "    <th>0.294940</th>\n",
+       "  </tr>\n",
+       "</table>\n"
+      ],
+      "text/plain": [
+       "<IPython.core.display.HTML object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "learn.fit_one_cycle(3, 1e-3, moms=(0.9,0.8))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "Total time: 00:52 <p><table style='width:300px; margin-bottom:10px'>\n",
+       "  <tr>\n",
+       "    <th>epoch</th>\n",
+       "    <th>train_loss</th>\n",
+       "    <th>valid_loss</th>\n",
+       "    <th>accuracy</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>1</th>\n",
+       "    <th>2.295465</th>\n",
+       "    <th>3.895061</th>\n",
+       "    <th>0.297272</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>2</th>\n",
+       "    <th>2.205605</th>\n",
+       "    <th>3.885594</th>\n",
+       "    <th>0.306473</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>3</th>\n",
+       "    <th>1.996905</th>\n",
+       "    <th>3.900741</th>\n",
+       "    <th>0.310218</th>\n",
+       "  </tr>\n",
+       "</table>\n"
+      ],
+      "text/plain": [
+       "<IPython.core.display.HTML object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "learn.fit_one_cycle(3, 1e-3, moms=(0.9,0.8))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "Total time: 00:52 <p><table style='width:300px; margin-bottom:10px'>\n",
+       "  <tr>\n",
+       "    <th>epoch</th>\n",
+       "    <th>train_loss</th>\n",
+       "    <th>valid_loss</th>\n",
+       "    <th>accuracy</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>1</th>\n",
+       "    <th>2.007854</th>\n",
+       "    <th>3.894826</th>\n",
+       "    <th>0.312574</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>2</th>\n",
+       "    <th>1.927806</th>\n",
+       "    <th>3.881098</th>\n",
+       "    <th>0.322917</th>\n",
+       "  </tr>\n",
+       "  <tr>\n",
+       "    <th>3</th>\n",
+       "    <th>1.763449</th>\n",
+       "    <th>3.899900</th>\n",
+       "    <th>0.325942</th>\n",
+       "  </tr>\n",
+       "</table>\n"
+      ],
+      "text/plain": [
+       "<IPython.core.display.HTML object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "learn.fit_one_cycle(3, 1e-3, moms=(0.7,0.6), wd=0.1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "learn.save('final_fit_render')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "LanguageLearner(data=TextLMDataBunch;\n",
+       "\n",
+       "Train: LabelList (1331 items)\n",
+       "x: LMTextList\n",
+       "xxbos xxunk no one who knows me better no one that can make me feel so good how did we stay so long together when everybody said we never would and just when i start to think they 're right that love has died there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time . there you go pulling me right back in right back in , right back in and i know i 'm never letting this go i 'm stuck on you whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue some days i do n't feel like trying some days you know i wanna just give up when it does n't matter who 's right fight about it all night had enough you give me that look i 'm sorry baby let 's make up you do that thing that makes me laugh and just like that there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time there you go pulling me right back in right back in , right back in and i know i 'm never letting this go i 'm stuck on you whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh you almost stay out too stuck together from the xxunk whoaoh , whoaoh feeling kinda sick just a spoon full of sugar make it better real quick i say , whoaoh , whoaoh xxunk gon na do with that whoaoh , whoaoh come on over here with that sugar xxunk sweet stuff come on give me that stuff everybody want some xxunk that get stuck up in your head whoaoh , whoaoh up in your head whoaoh , whoaoh up in your head whoaoh , whoaoh up in your head whoaoh , whoaoh stuck like glue you and me together say it 's all i wanna do i said there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time there you go pulling me right back in right back in , right back in and i know i 'm never letting this go there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time there you go pulling me right back in right back in , right back in and i know i 'm never letting this go i 'm stuck on you whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue,xxbos they say this town the stars stay up all night do n't know , ca n't see 'em for the glow of the neon lights and it 's a long way from here to the place where the home fires burn well , it 's two thousand miles and one left turn dear mom and dad . please send money , xxunk so broke that it ai n't funny . i do n't need much just enough to get me through . please do n't worry cause i 'm alright i 'm playing here at the bar tonight . this time i 'm gon na make our dreams come true well i love you more than anything in the world . love . your baby girl black top , blue sky big town full of little white lies everybody 's your friend , you can never be sure they promise fancy cars and diamond rings all xxunk of xxunk things girl , you 'll remember what your knees are for dear mom and dad . please send money , xxunk so broke that it ai n't funny . i do n't need much just enough to get me through . please do n't worry cause i 'm alright i 'm playing here at the bar tonight . this time i 'm gon na make our dreams come true well i love you more than anything in the world . love . your baby girl i know that i 'm on my way i can tell every time i play and i know it 's worth all the dues i pay when i can write to you and say dear mom and dad . i 'll send money , i 'm so rich that it ai n't funny it ought ta be more than enough to get you through please do n't worry cause i 'm alright i 'm staying here at the xxunk tonight what ta ya know we made our dreams come true ! and there are fancy cars and diamond rings but you know that they do n't mean a thing they all add up to nothing compared to you well , remember me in ribbons and curls i still love you more than anything in the world . love . your baby girl,xxbos friday , xxunk , xxunk got to get away had it with the wife thing , living on a shoe string what 's a poor girl got to do just to have some fun ? all these years without any help guess what , honey , clothes just do n't wash themselves ! neither do dishes , neither does the bathroom floor so , now if anyone asks , not that they would i 'll be down in mississippi and up to no good no more , what a bore , had enough , i 'm out the door headed for a breakdown , had it with the small town gon na call lisa , gon na call xxunk sue now we 're gon na let it roll , gon na let it rip gon na get us a nice room down on the strip not that we 'll need it , there wo n't be any sleepin tonight so , now if anyone asks , not that they would we 'll be down in mississippi and up to no good hammer down , here we go runnin for the riverboat all you 're gon na see is xxunk and xxunk luck 's about to change for these three queens tired of getting xxunk , deal us up kings snake eyes , roll the dice , double down and hit me twice xxunk in the big chips , gon na leave a big tip hotter than a two dollar pistol , baby , i 'm on fire so , now if anyone asks , not that they would i 'll be down in mississippi and up to no good if anyone asks , not that they would i 'll be down in mississippi and up to no good,xxbos oh i swear this town gets smaller everyday . and i 'm waiting for my chance . i 'm gon na break away . i 'm so sick and tired of being told what 's good for me . people got lots of ideas , of who i 'm supposed to be . angel carry me , oh so far away . may my body never , touch the ground . and if i promise you that i 'll be back someday . will you set me free so i can fly away ? fly away , fly away well most folks here well they do n't dig too deep . they ca n't dream too big cause they 've got fields to keep i could walk away and leave my family . or get buried alive in this xxunk . i want to sleep under a different piece of sky i want to live a little bit before i die i want to be so close to heaven i see angels fly away,xxbos i was born in the heart of a hurricane season in the house where my mama was raised that old september wind feels just like a long lost friend and i want to run through those cottonwood trees fall asleep in a big bed of fresh fallen leaves and in every wind that blows there 's a song of letting go it 's not goodbye , it 's hello when we met underneath the blue skies of summer and those summer skies turn into fall that sweet september wind made us so much more than friends on night and we ran through those cottonwood trees we made love in a big bed of fresh fallen leaves and in every wind that blows there 's an innocence that knows it 's not goodbye , it 's hello in the moment that one thing ends is the same time that one begins and return as we must we are ashes to dust , amen . when the days of my youth have all faded and the memories are all that remain let that old september wind take me back to where i 've been so i can run through those cottonwood trees and remember the smell of those fresh fallen leaves now in every wind that blows there 's a part of me that knows it 's not goodbye , it 's hello\n",
+       "y: LMLabelList\n",
+       ",,,,\n",
+       "Path: /home/paperspace/fastai/course-v3/nbs/dl1/music;\n",
+       "\n",
+       "Valid: LabelList (147 items)\n",
+       "x: LMTextList\n",
+       "xxbos seems like only yesterday i left my mind behind down in the gypsy cafe with a friend of mine she sat with a baby heavy on her knee yet spoke of life most free from xxunk with eyes that showed no trace of misery a phrase in connection first with she i heard that love is just a xxunk word outside a rambling xxunk window cats xxunk to the break of day me , i kept my mouth shut , too to you i had no words to say my xxunk was limited and xxunk you were talking while i hid to the one who was the father of your kid you probably did n't think i did , but i heard you say that love is just a xxunk word i said goodbye xxunk pushed towards things in my own games drifting in and out of xxunk xxunk by name searching for my double , looking for complete xxunk to the core though i tried and failed at finding any door i must have thought that there was nothing more xxunk than that love is just a xxunk word though i never knew just what you meant when you were speaking to your man i can only think in xxunk of me and now i understand after waking enough times to think i see the holy kiss that 's supposed to last eternity blow up in smoke , its destiny falls on strangers , xxunk free yes , i know now , xxunk are only set by me and i do not really need to be assured that love is just a xxunk word,xxbos i 've been a xxunk for seventeen long years i 've spent all my money on whiskey and beer i go to some hollow and sit at my still and if whiskey do n't kill me then i do n't know what will i go to some xxunk and drink with my friends where the women ca n't follow and see what i spend god bless them pretty women i wish they was mine their breath is as sweet the dew on the vine let me eat when i am hungry let me drink when i am dry a dollar when i am xxunk religion when i die the whole world 's a bottle and life 's but a xxunk when the bottle gets empty it sure ai n't worth a damn,xxbos if you see her , say hello . she might be in xxunk she left here last early spring is livin there , i hear say for me that i 'm all right though things get kind of slow she might think that i 've forgotten her do n't tell her it is n't so we had a xxunk like lovers often will and to think of how she left that night it still brings me a chill and though our xxunk it pierced me to the heart she still lives inside of me we 've never been apart if you get close to her kiss her once for me i always have xxunk her for doin what she did and gettin free oh , whatever makes her happy i wo n't stand in the way though the bitter taste still xxunk on from the night i tried to make her stay i see a lot of people as i make the xxunk and i hear her name here and there as i go from town to town and i 've never xxunk used to it i 've just learned to turn it off either i 'm too xxunk or else i 'm gettin soft sundown , yellow moon i xxunk the past i know every scene by heart they all went by so fast if she 's xxunk back this way i 'm not that hard to find tell her she can look me up if she 's got the time,xxbos it 's written on our palms , and it 's written on our hearts it 's written in our songs , and it 's written in the stars sometimes all we can do is stand up tall when they 're standing in line just to watch us fall whoa we ca n't forget , these are the days whoa , do n't be afraid we ca n't forget , these are the days well , we got each other , and that 's all we need from here on out it 's just you and me two xxunk hearts up against the world that do n't stand a chance against this boy and girl we xxunk 'em down , fought bigger xxunk and i know , babe , we 're gon na be alright well , it feels like we 're living from pay check to check and we wake up wondering what might happen next yeah , sometimes it feels like we wo n't make it through but the hard times pass like the good ones do baby , wrap your fingers and hold on tight i 'll be right here beside you tonight baby , climb up here watch the city glow let 's make a wish on the xxunk below we 're making moments that we wo n't forget and feeling ones that have n't happened yet whoa do n't be afraid we ca n't forget these are the days,xxbos i 'm sorry , mother i 'm sorry , i let you down well , these days i 'm fine no these days i tend to lie i 'll take the west train , just by the side of xxunk just by my left brain , just by the side of the tin man i 'm sorry , brother i 'm sorry , i let cha down well , these days you 're fine no these days you tend to lie you 'll take the west train , just by the side of xxunk just by your left brain , just by the side of the tin man your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried but i keep coming up short i 'm sorry , lover you 're sorry , i bring you down well , these days i try and these days i tend to lie kinda thought i was a mystery and then i thought i was n't meant to be you said yourself xxunk , xxunk you were all alone your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried but the rain wo n't fall for the both of us the sun wo n't shine on the both of us believe me when i say , that i would n't have it any other way your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried but i wo n't wait much longer 'cause these walls they 're crashing down and i wo n't wait much longer 'cause these walls they 're crashing down and i keep coming up short\n",
+       "y: LMLabelList\n",
+       ",,,,\n",
+       "Path: /home/paperspace/fastai/course-v3/nbs/dl1/music;\n",
+       "\n",
+       "Test: None, model=SequentialRNN(\n",
+       "  (0): AWD_LSTM(\n",
+       "    (encoder): Embedding(5311, 400, padding_idx=1)\n",
+       "    (encoder_dp): EmbeddingDropout(\n",
+       "      (emb): Embedding(5311, 400, padding_idx=1)\n",
+       "    )\n",
+       "    (rnns): ModuleList(\n",
+       "      (0): WeightDropout(\n",
+       "        (module): LSTM(400, 1150, batch_first=True)\n",
+       "      )\n",
+       "      (1): WeightDropout(\n",
+       "        (module): LSTM(1150, 1150, batch_first=True)\n",
+       "      )\n",
+       "      (2): WeightDropout(\n",
+       "        (module): LSTM(1150, 400, batch_first=True)\n",
+       "      )\n",
+       "    )\n",
+       "    (input_dp): RNNDropout()\n",
+       "    (hidden_dps): ModuleList(\n",
+       "      (0): RNNDropout()\n",
+       "      (1): RNNDropout()\n",
+       "      (2): RNNDropout()\n",
+       "    )\n",
+       "  )\n",
+       "  (1): LinearDecoder(\n",
+       "    (decoder): Linear(in_features=400, out_features=5311, bias=True)\n",
+       "    (output_dp): RNNDropout()\n",
+       "  )\n",
+       "), opt_func=functools.partial(<class 'torch.optim.adam.Adam'>, betas=(0.9, 0.99)), loss_func=FlattenedLoss of CrossEntropyLoss(), metrics=[<function accuracy at 0x7fa0b09c67b8>], true_wd=True, bn_wd=True, wd=0.01, train_bn=True, path=PosixPath('/home/paperspace/fastai/course-v3/nbs/dl1/music'), model_dir='models', callback_fns=[<class 'fastai.basic_train.Recorder'>], callbacks=[RNNTrainer\n",
+       "learn: LanguageLearner(data=TextLMDataBunch;\n",
+       "\n",
+       "Train: LabelList (1331 items)\n",
+       "x: LMTextList\n",
+       "xxbos xxunk no one who knows me better no one that can make me feel so good how did we stay so long together when everybody said we never would and just when i start to think they 're right that love has died there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time . there you go pulling me right back in right back in , right back in and i know i 'm never letting this go i 'm stuck on you whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue some days i do n't feel like trying some days you know i wanna just give up when it does n't matter who 's right fight about it all night had enough you give me that look i 'm sorry baby let 's make up you do that thing that makes me laugh and just like that there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time there you go pulling me right back in right back in , right back in and i know i 'm never letting this go i 'm stuck on you whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh you almost stay out too stuck together from the xxunk whoaoh , whoaoh feeling kinda sick just a spoon full of sugar make it better real quick i say , whoaoh , whoaoh xxunk gon na do with that whoaoh , whoaoh come on over here with that sugar xxunk sweet stuff come on give me that stuff everybody want some xxunk that get stuck up in your head whoaoh , whoaoh up in your head whoaoh , whoaoh up in your head whoaoh , whoaoh up in your head whoaoh , whoaoh stuck like glue you and me together say it 's all i wanna do i said there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time there you go pulling me right back in right back in , right back in and i know i 'm never letting this go there you go making my heart beat again heart beat again , heart beat again there you go making me feel like a kid wo n't you do it and do it one time there you go pulling me right back in right back in , right back in and i know i 'm never letting this go i 'm stuck on you whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue whoaoh , whoaoh stuck like glue you and me baby we 're stuck like glue,xxbos they say this town the stars stay up all night do n't know , ca n't see 'em for the glow of the neon lights and it 's a long way from here to the place where the home fires burn well , it 's two thousand miles and one left turn dear mom and dad . please send money , xxunk so broke that it ai n't funny . i do n't need much just enough to get me through . please do n't worry cause i 'm alright i 'm playing here at the bar tonight . this time i 'm gon na make our dreams come true well i love you more than anything in the world . love . your baby girl black top , blue sky big town full of little white lies everybody 's your friend , you can never be sure they promise fancy cars and diamond rings all xxunk of xxunk things girl , you 'll remember what your knees are for dear mom and dad . please send money , xxunk so broke that it ai n't funny . i do n't need much just enough to get me through . please do n't worry cause i 'm alright i 'm playing here at the bar tonight . this time i 'm gon na make our dreams come true well i love you more than anything in the world . love . your baby girl i know that i 'm on my way i can tell every time i play and i know it 's worth all the dues i pay when i can write to you and say dear mom and dad . i 'll send money , i 'm so rich that it ai n't funny it ought ta be more than enough to get you through please do n't worry cause i 'm alright i 'm staying here at the xxunk tonight what ta ya know we made our dreams come true ! and there are fancy cars and diamond rings but you know that they do n't mean a thing they all add up to nothing compared to you well , remember me in ribbons and curls i still love you more than anything in the world . love . your baby girl,xxbos friday , xxunk , xxunk got to get away had it with the wife thing , living on a shoe string what 's a poor girl got to do just to have some fun ? all these years without any help guess what , honey , clothes just do n't wash themselves ! neither do dishes , neither does the bathroom floor so , now if anyone asks , not that they would i 'll be down in mississippi and up to no good no more , what a bore , had enough , i 'm out the door headed for a breakdown , had it with the small town gon na call lisa , gon na call xxunk sue now we 're gon na let it roll , gon na let it rip gon na get us a nice room down on the strip not that we 'll need it , there wo n't be any sleepin tonight so , now if anyone asks , not that they would we 'll be down in mississippi and up to no good hammer down , here we go runnin for the riverboat all you 're gon na see is xxunk and xxunk luck 's about to change for these three queens tired of getting xxunk , deal us up kings snake eyes , roll the dice , double down and hit me twice xxunk in the big chips , gon na leave a big tip hotter than a two dollar pistol , baby , i 'm on fire so , now if anyone asks , not that they would i 'll be down in mississippi and up to no good if anyone asks , not that they would i 'll be down in mississippi and up to no good,xxbos oh i swear this town gets smaller everyday . and i 'm waiting for my chance . i 'm gon na break away . i 'm so sick and tired of being told what 's good for me . people got lots of ideas , of who i 'm supposed to be . angel carry me , oh so far away . may my body never , touch the ground . and if i promise you that i 'll be back someday . will you set me free so i can fly away ? fly away , fly away well most folks here well they do n't dig too deep . they ca n't dream too big cause they 've got fields to keep i could walk away and leave my family . or get buried alive in this xxunk . i want to sleep under a different piece of sky i want to live a little bit before i die i want to be so close to heaven i see angels fly away,xxbos i was born in the heart of a hurricane season in the house where my mama was raised that old september wind feels just like a long lost friend and i want to run through those cottonwood trees fall asleep in a big bed of fresh fallen leaves and in every wind that blows there 's a song of letting go it 's not goodbye , it 's hello when we met underneath the blue skies of summer and those summer skies turn into fall that sweet september wind made us so much more than friends on night and we ran through those cottonwood trees we made love in a big bed of fresh fallen leaves and in every wind that blows there 's an innocence that knows it 's not goodbye , it 's hello in the moment that one thing ends is the same time that one begins and return as we must we are ashes to dust , amen . when the days of my youth have all faded and the memories are all that remain let that old september wind take me back to where i 've been so i can run through those cottonwood trees and remember the smell of those fresh fallen leaves now in every wind that blows there 's a part of me that knows it 's not goodbye , it 's hello\n",
+       "y: LMLabelList\n",
+       ",,,,\n",
+       "Path: /home/paperspace/fastai/course-v3/nbs/dl1/music;\n",
+       "\n",
+       "Valid: LabelList (147 items)\n",
+       "x: LMTextList\n",
+       "xxbos seems like only yesterday i left my mind behind down in the gypsy cafe with a friend of mine she sat with a baby heavy on her knee yet spoke of life most free from xxunk with eyes that showed no trace of misery a phrase in connection first with she i heard that love is just a xxunk word outside a rambling xxunk window cats xxunk to the break of day me , i kept my mouth shut , too to you i had no words to say my xxunk was limited and xxunk you were talking while i hid to the one who was the father of your kid you probably did n't think i did , but i heard you say that love is just a xxunk word i said goodbye xxunk pushed towards things in my own games drifting in and out of xxunk xxunk by name searching for my double , looking for complete xxunk to the core though i tried and failed at finding any door i must have thought that there was nothing more xxunk than that love is just a xxunk word though i never knew just what you meant when you were speaking to your man i can only think in xxunk of me and now i understand after waking enough times to think i see the holy kiss that 's supposed to last eternity blow up in smoke , its destiny falls on strangers , xxunk free yes , i know now , xxunk are only set by me and i do not really need to be assured that love is just a xxunk word,xxbos i 've been a xxunk for seventeen long years i 've spent all my money on whiskey and beer i go to some hollow and sit at my still and if whiskey do n't kill me then i do n't know what will i go to some xxunk and drink with my friends where the women ca n't follow and see what i spend god bless them pretty women i wish they was mine their breath is as sweet the dew on the vine let me eat when i am hungry let me drink when i am dry a dollar when i am xxunk religion when i die the whole world 's a bottle and life 's but a xxunk when the bottle gets empty it sure ai n't worth a damn,xxbos if you see her , say hello . she might be in xxunk she left here last early spring is livin there , i hear say for me that i 'm all right though things get kind of slow she might think that i 've forgotten her do n't tell her it is n't so we had a xxunk like lovers often will and to think of how she left that night it still brings me a chill and though our xxunk it pierced me to the heart she still lives inside of me we 've never been apart if you get close to her kiss her once for me i always have xxunk her for doin what she did and gettin free oh , whatever makes her happy i wo n't stand in the way though the bitter taste still xxunk on from the night i tried to make her stay i see a lot of people as i make the xxunk and i hear her name here and there as i go from town to town and i 've never xxunk used to it i 've just learned to turn it off either i 'm too xxunk or else i 'm gettin soft sundown , yellow moon i xxunk the past i know every scene by heart they all went by so fast if she 's xxunk back this way i 'm not that hard to find tell her she can look me up if she 's got the time,xxbos it 's written on our palms , and it 's written on our hearts it 's written in our songs , and it 's written in the stars sometimes all we can do is stand up tall when they 're standing in line just to watch us fall whoa we ca n't forget , these are the days whoa , do n't be afraid we ca n't forget , these are the days well , we got each other , and that 's all we need from here on out it 's just you and me two xxunk hearts up against the world that do n't stand a chance against this boy and girl we xxunk 'em down , fought bigger xxunk and i know , babe , we 're gon na be alright well , it feels like we 're living from pay check to check and we wake up wondering what might happen next yeah , sometimes it feels like we wo n't make it through but the hard times pass like the good ones do baby , wrap your fingers and hold on tight i 'll be right here beside you tonight baby , climb up here watch the city glow let 's make a wish on the xxunk below we 're making moments that we wo n't forget and feeling ones that have n't happened yet whoa do n't be afraid we ca n't forget these are the days,xxbos i 'm sorry , mother i 'm sorry , i let you down well , these days i 'm fine no these days i tend to lie i 'll take the west train , just by the side of xxunk just by my left brain , just by the side of the tin man i 'm sorry , brother i 'm sorry , i let cha down well , these days you 're fine no these days you tend to lie you 'll take the west train , just by the side of xxunk just by your left brain , just by the side of the tin man your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried but i keep coming up short i 'm sorry , lover you 're sorry , i bring you down well , these days i try and these days i tend to lie kinda thought i was a mystery and then i thought i was n't meant to be you said yourself xxunk , xxunk you were all alone your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried but the rain wo n't fall for the both of us the sun wo n't shine on the both of us believe me when i say , that i would n't have it any other way your time will come if you wait for it , if you wait for it it 's hard , believe me i 've tried but i wo n't wait much longer 'cause these walls they 're crashing down and i wo n't wait much longer 'cause these walls they 're crashing down and i keep coming up short\n",
+       "y: LMLabelList\n",
+       ",,,,\n",
+       "Path: /home/paperspace/fastai/course-v3/nbs/dl1/music;\n",
+       "\n",
+       "Test: None, model=SequentialRNN(\n",
+       "  (0): AWD_LSTM(\n",
+       "    (encoder): Embedding(5311, 400, padding_idx=1)\n",
+       "    (encoder_dp): EmbeddingDropout(\n",
+       "      (emb): Embedding(5311, 400, padding_idx=1)\n",
+       "    )\n",
+       "    (rnns): ModuleList(\n",
+       "      (0): WeightDropout(\n",
+       "        (module): LSTM(400, 1150, batch_first=True)\n",
+       "      )\n",
+       "      (1): WeightDropout(\n",
+       "        (module): LSTM(1150, 1150, batch_first=True)\n",
+       "      )\n",
+       "      (2): WeightDropout(\n",
+       "        (module): LSTM(1150, 400, batch_first=True)\n",
+       "      )\n",
+       "    )\n",
+       "    (input_dp): RNNDropout()\n",
+       "    (hidden_dps): ModuleList(\n",
+       "      (0): RNNDropout()\n",
+       "      (1): RNNDropout()\n",
+       "      (2): RNNDropout()\n",
+       "    )\n",
+       "  )\n",
+       "  (1): LinearDecoder(\n",
+       "    (decoder): Linear(in_features=400, out_features=5311, bias=True)\n",
+       "    (output_dp): RNNDropout()\n",
+       "  )\n",
+       "), opt_func=functools.partial(<class 'torch.optim.adam.Adam'>, betas=(0.9, 0.99)), loss_func=FlattenedLoss of CrossEntropyLoss(), metrics=[<function accuracy at 0x7fa0b09c67b8>], true_wd=True, bn_wd=True, wd=0.01, train_bn=True, path=PosixPath('/home/paperspace/fastai/course-v3/nbs/dl1/music'), model_dir='models', callback_fns=[<class 'fastai.basic_train.Recorder'>], callbacks=[...], layer_groups=[Sequential(\n",
+       "  (0): WeightDropout(\n",
+       "    (module): LSTM(400, 1150, batch_first=True)\n",
+       "  )\n",
+       "  (1): RNNDropout()\n",
+       "), Sequential(\n",
+       "  (0): WeightDropout(\n",
+       "    (module): LSTM(1150, 1150, batch_first=True)\n",
+       "  )\n",
+       "  (1): RNNDropout()\n",
+       "), Sequential(\n",
+       "  (0): WeightDropout(\n",
+       "    (module): LSTM(1150, 400, batch_first=True)\n",
+       "  )\n",
+       "  (1): RNNDropout()\n",
+       "), Sequential(\n",
+       "  (0): Embedding(5311, 400, padding_idx=1)\n",
+       "  (1): EmbeddingDropout(\n",
+       "    (emb): Embedding(5311, 400, padding_idx=1)\n",
+       "  )\n",
+       "  (2): LinearDecoder(\n",
+       "    (decoder): Linear(in_features=400, out_features=5311, bias=True)\n",
+       "    (output_dp): RNNDropout()\n",
+       "  )\n",
+       ")])\n",
+       "alpha: 2.0\n",
+       "beta: 1.0], layer_groups=[Sequential(\n",
+       "  (0): WeightDropout(\n",
+       "    (module): LSTM(400, 1150, batch_first=True)\n",
+       "  )\n",
+       "  (1): RNNDropout()\n",
+       "), Sequential(\n",
+       "  (0): WeightDropout(\n",
+       "    (module): LSTM(1150, 1150, batch_first=True)\n",
+       "  )\n",
+       "  (1): RNNDropout()\n",
+       "), Sequential(\n",
+       "  (0): WeightDropout(\n",
+       "    (module): LSTM(1150, 400, batch_first=True)\n",
+       "  )\n",
+       "  (1): RNNDropout()\n",
+       "), Sequential(\n",
+       "  (0): Embedding(5311, 400, padding_idx=1)\n",
+       "  (1): EmbeddingDropout(\n",
+       "    (emb): Embedding(5311, 400, padding_idx=1)\n",
+       "  )\n",
+       "  (2): LinearDecoder(\n",
+       "    (decoder): Linear(in_features=400, out_features=5311, bias=True)\n",
+       "    (output_dp): RNNDropout()\n",
+       "  )\n",
+       ")])"
+      ]
+     },
+     "execution_count": 6,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "learn.load('final_fit_render')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "\"i love you like the other kids at the same old age pulling me out of the right hand and the left hand me, the left thumb, both my fingers and thumb your arms and fingers and thumbs and i'm stood on the ground the shape of you was up and it was sweet sand just like a woman in love come on\""
+      ]
+     },
+     "execution_count": 12,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "#this is the version with the cosine annealing of the temperature with only 1 line\n",
+    "def generate_lyric(word='', temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):\n",
+    "    seeds = ['you are', 'i love you', 'we are', 'how can']\n",
+    "    word = random.choice(seeds)\n",
+    "    again = []\n",
+    "    stops.append('xxbos')\n",
+    "    last_4 = ['','','','']\n",
+    "    #check_temp = []\n",
+    "    total = []\n",
+    "    stops.append('xxbos')\n",
+    "    i = 0\n",
+    "    commas = 0\n",
+    "    temp = temp_init\n",
+    "    while True:\n",
+    "        if any(x in word for x in stops):\n",
+    "            break\n",
+    "        if commas > comma_limit:\n",
+    "            break    \n",
+    "        if all(x in (\" \".join([i for i in word.split()[-9:-5]])) for x in last_4) and (len(word.split()) > 10):\n",
+    "            break\n",
+    "        addition = learn.predict(word, 1, temperature=temp)\n",
+    "        total.append(addition)\n",
+    "        commas = addition.count(',')\n",
+    "        last_4 = total[i].split()[-4:]\n",
+    "        word = addition\n",
+    "        #print(total[i])\n",
+    "        i += 1\n",
+    "        temp = max(abs((math.cos(i * math.pi / decay)))*temp_init,0.1)\n",
+    "        #check_temp.append(temp)\n",
+    "\n",
+    "#below is the retokenization of the words\n",
+    "    words = total[-2].split()\n",
+    "    for i, word in enumerate(words):\n",
+    "        if word == 'xxbos':\n",
+    "            words[i] = '<br/>'\n",
+    "        elif word == 'xxmaj':\n",
+    "            words[i+1] = words[i+1][0].upper() + words[i+1][1:]\n",
+    "            words[i] = ''\n",
+    "        elif word == 'xxup':\n",
+    "            words[i+1] = words[i+1].upper()\n",
+    "            words[i] = ''     \n",
+    "        elif word == 'xxunk' or word == '(' or word == ')' or word == '\"':\n",
+    "            words[i] = ''   \n",
+    "        elif word == \"n't\":\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word == \",\":\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word == '.' or word == '?' or word == '!' or word == ';':\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word[0] == \"'\":\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word == ' ':\n",
+    "            words[i] = ''\n",
+    "        elif \"n't\" in word:\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word == \"na\":\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        try:\n",
+    "            words.remove('')\n",
+    "        except:\n",
+    "            continue\n",
+    "            \n",
+    "    return(' '.join(words))\n",
+    "generate_lyric()\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "\"you are the only one although my mind just flows to me to be ignored the plans i we have made in the things that you'd see when your eyes are closed we'll never be finds miles that particular fallen beneath our feet but the fields are empty outside i don't know why i love you anymore i don't know you anymore i left you in the pieces of my dreams you changed so a lot you see ay an the air we saw in my eyes i wo n’t mourn, i ain't sittin on top of the world now, i'm answers for each beautiful day\""
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "#this is the version with the cosine annealing of the temperature with only 1 line - best\n",
+    "#this is the best one with the total reconfigured\n",
+    "def generate_lyric(temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):\n",
+    "    seeds = ['you are', 'i love you', 'we are', 'how can']\n",
+    "    word = random.choice(seeds)\n",
+    "    again = []\n",
+    "    stops.append('xxbos')\n",
+    "    last_4 = ['','','','']\n",
+    "    #check_temp = []\n",
+    "    total = []\n",
+    "    stops.append('xxbos')\n",
+    "    i = 0\n",
+    "    commas = 0\n",
+    "    temp = temp_init\n",
+    "    while True:\n",
+    "        if any(x in word for x in stops):\n",
+    "            break\n",
+    "        if commas > comma_limit:\n",
+    "            break    \n",
+    "        if all(x in (\" \".join([i for i in word.split()[-9:-5]])) for x in last_4) and (len(word.split()) > 10):\n",
+    "            break\n",
+    "        addition = learn.predict(word, 1, temperature=temp)\n",
+    "        total.append(addition)\n",
+    "        total = total[-2:]\n",
+    "        commas = addition.count(',')\n",
+    "        last_4 = total[-1].split()[-4:]\n",
+    "        word = addition\n",
+    "        #print(total[i])\n",
+    "        i += 1\n",
+    "        temp = max(abs((math.cos(len(total) * math.pi / decay)))*temp_init,0.1)\n",
+    "        #check_temp.append(temp)\n",
+    "\n",
+    "#below is the retokenization of the words\n",
+    "    words = total[-2].split()\n",
+    "    for i, word in enumerate(words):\n",
+    "        if word == 'xxbos':\n",
+    "            words[i] = '<br/>'\n",
+    "        elif word == 'xxmaj':\n",
+    "            words[i+1] = words[i+1][0].upper() + words[i+1][1:]\n",
+    "            words[i] = ''\n",
+    "        elif word == 'xxup':\n",
+    "            words[i+1] = words[i+1].upper()\n",
+    "            words[i] = ''     \n",
+    "        elif word == 'xxunk' or word == '(' or word == ')' or word == '\"':\n",
+    "            words[i] = ''   \n",
+    "        elif word == \"n't\":\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word == \",\":\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word == '.' or word == '?' or word == '!' or word == ';':\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word[0] == \"'\":\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word == ' ':\n",
+    "            words[i] = ''\n",
+    "        elif \"n't\" in word:\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word == \"na\":\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        try:\n",
+    "            words.remove('')\n",
+    "        except:\n",
+    "            continue\n",
+    "            \n",
+    "    return(' '.join(words))\n",
+    "\n",
+    "generate_lyric()\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "RuntimeError",
+     "evalue": "CUDA error: device-side assert triggered",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mRuntimeError\u001b[0m                              Traceback (most recent call last)",
+      "\u001b[0;32m<ipython-input-8-08d194703ba9>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m\u001b[0m\n\u001b[1;32m     74\u001b[0m     \u001b[0;32mreturn\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m' '\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mjoin\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mwords\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     75\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---> 76\u001b[0;31m \u001b[0mgenerate_lyric\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m''\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     77\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m<ipython-input-8-08d194703ba9>\u001b[0m in \u001b[0;36mgenerate_lyric\u001b[0;34m(data, temp_init, decay, stops, comma_limit, words)\u001b[0m\n\u001b[1;32m     24\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0mall\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mx\u001b[0m \u001b[0;32min\u001b[0m \u001b[0;34m(\u001b[0m\u001b[0;34m\" \"\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mjoin\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mi\u001b[0m \u001b[0;32mfor\u001b[0m \u001b[0mi\u001b[0m \u001b[0;32min\u001b[0m \u001b[0mword\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0msplit\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;34m-\u001b[0m\u001b[0;36m9\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m-\u001b[0m\u001b[0;36m5\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32mfor\u001b[0m \u001b[0mx\u001b[0m \u001b[0;32min\u001b[0m \u001b[0mlast_4\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32mand\u001b[0m \u001b[0;34m(\u001b[0m\u001b[0mlen\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mword\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0msplit\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;34m>\u001b[0m \u001b[0;36m10\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     25\u001b[0m             \u001b[0;32mbreak\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---> 26\u001b[0;31m         \u001b[0maddition\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mlearn\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mbeam_search\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mword\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;36m1\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mtemperature\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mtemp\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     27\u001b[0m         \u001b[0mtotal\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mappend\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0maddition\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     28\u001b[0m         \u001b[0mcommas\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0maddition\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mcount\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m','\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/fastai/fastai/text/learner.py\u001b[0m in \u001b[0;36mbeam_search\u001b[0;34m(self, text, n_words, top_k, beam_sz, temperature, sep, decoder)\u001b[0m\n\u001b[1;32m    154\u001b[0m                 \u001b[0mxb\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mnodes\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m-\u001b[0m\u001b[0;36m1\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;32mNone\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    155\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0mtemperature\u001b[0m \u001b[0;34m!=\u001b[0m \u001b[0;36m1.\u001b[0m\u001b[0;34m:\u001b[0m \u001b[0mscores\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mdiv_\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mtemperature\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 156\u001b[0;31m         \u001b[0mnode_idx\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mtorch\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mmultinomial\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;36m1\u001b[0m\u001b[0;34m-\u001b[0m\u001b[0mscores\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;36m1\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mitem\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    157\u001b[0m         \u001b[0;32mreturn\u001b[0m \u001b[0mtext\u001b[0m \u001b[0;34m+\u001b[0m \u001b[0msep\u001b[0m \u001b[0;34m+\u001b[0m \u001b[0msep\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mjoin\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mdecoder\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mdata\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mvocab\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mtextify\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mi\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mitem\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32mfor\u001b[0m \u001b[0mi\u001b[0m \u001b[0;32min\u001b[0m \u001b[0mnodes\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mnode_idx\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0msep\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0;32mNone\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    158\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;31mRuntimeError\u001b[0m: CUDA error: device-side assert triggered"
+     ]
+    }
+   ],
+   "source": [
+    "#this is the version with the cosine annealing of the temperature with only 1 line- this is the best\n",
+    "#added the optional seeds for if the input is blank\n",
+    "#trying to implement beam search\n",
+    "\n",
+    "def generate_lyric(data, temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):\n",
+    "    seeds = ['you are', 'i love you', 'we are', 'how can']\n",
+    "    if data:\n",
+    "        word = data\n",
+    "    else:\n",
+    "        word = random.choice(seeds)\n",
+    "    again = []\n",
+    "    stops.append('xxbos')\n",
+    "    last_4 = ['','','','']\n",
+    "    #check_temp = []\n",
+    "    total = []\n",
+    "    stops.append('xxbos')\n",
+    "    i = 0\n",
+    "    commas = 0\n",
+    "    temp = temp_init\n",
+    "    while True:\n",
+    "        if any(x in word for x in stops):\n",
+    "            break\n",
+    "        if commas > comma_limit:\n",
+    "            break    \n",
+    "        if all(x in (\" \".join([i for i in word.split()[-9:-5]])) for x in last_4) and (len(word.split()) > 10):\n",
+    "            break\n",
+    "        addition = learn.beam_search(word, 1, temperature=temp)\n",
+    "        total.append(addition)\n",
+    "        commas = addition.count(',')\n",
+    "        last_4 = total[i].split()[-4:]\n",
+    "        word = addition\n",
+    "        #print(total[i])\n",
+    "        i += 1\n",
+    "        temp = max(abs((math.cos(len(total) * math.pi / decay)))*temp_init,0.1)\n",
+    "        #check_temp.append(temp)\n",
+    "\n",
+    "#below is the retokenization of the words\n",
+    "    words = total[-2].split()\n",
+    "    for i, word in enumerate(words):\n",
+    "        if word == 'xxbos':\n",
+    "            words[i] = '<br/>'\n",
+    "        elif word == 'xxmaj':\n",
+    "            words[i+1] = words[i+1][0].upper() + words[i+1][1:]\n",
+    "            words[i] = ''\n",
+    "        elif word == 'xxup':\n",
+    "            words[i+1] = words[i+1].upper()\n",
+    "            words[i] = ''     \n",
+    "        elif word == 'xxunk' or word == '(' or word == ')' or word == '\"':\n",
+    "            words[i] = ''   \n",
+    "        elif word == \"n't\":\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word == \",\":\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word == '.' or word == '?' or word == '!' or word == ';':\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word[0] == \"'\":\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word == ' ':\n",
+    "            words[i] = ''\n",
+    "        elif \"n't\" in word:\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        elif word == \"na\":\n",
+    "            words[i-1]+= words[i]\n",
+    "            words[i] = ''\n",
+    "        try:\n",
+    "            words.remove('')\n",
+    "        except:\n",
+    "            continue\n",
+    "            \n",
+    "    return(' '.join(words))\n",
+    "\n",
+    "generate_lyric('')\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "RuntimeError",
+     "evalue": "cuda runtime error (59) : device-side assert triggered at /pytorch/aten/src/THC/generic/THCTensorMath.cu:24",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mRuntimeError\u001b[0m                              Traceback (most recent call last)",
+      "\u001b[0;32m<ipython-input-9-169e74f3f4d5>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m\u001b[0m\n\u001b[0;32m----> 1\u001b[0;31m \u001b[0mlearn\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mbeam_search\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m'hello'\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;36m1\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m",
+      "\u001b[0;32m~/fastai/fastai/text/learner.py\u001b[0m in \u001b[0;36mbeam_search\u001b[0;34m(self, text, n_words, top_k, beam_sz, temperature, sep, decoder)\u001b[0m\n\u001b[1;32m    131\u001b[0m         \u001b[0;34m\"Return the `n_words` that come after `text` using beam search.\"\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    132\u001b[0m         \u001b[0mds\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mdata\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0msingle_dl\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mdataset\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 133\u001b[0;31m         \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mmodel\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mreset\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    134\u001b[0m         \u001b[0mxb\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0myb\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mdata\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mone_item\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mtext\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    135\u001b[0m         \u001b[0mstart_idx\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mxb\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mclone\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/fastai/fastai/text/models/awd_lstm.py\u001b[0m in \u001b[0;36mreset\u001b[0;34m(self)\u001b[0m\n\u001b[1;32m    155\u001b[0m     \u001b[0;32mdef\u001b[0m \u001b[0mreset\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    156\u001b[0m         \u001b[0;32mfor\u001b[0m \u001b[0mc\u001b[0m \u001b[0;32min\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mchildren\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 157\u001b[0;31m             \u001b[0;32mif\u001b[0m \u001b[0mhasattr\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mc\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m'reset'\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m \u001b[0mc\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mreset\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    158\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    159\u001b[0m \u001b[0;32mclass\u001b[0m \u001b[0mPoolingLinearClassifier\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mnn\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mModule\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/fastai/fastai/text/models/awd_lstm.py\u001b[0m in \u001b[0;36mreset\u001b[0;34m(self)\u001b[0m\n\u001b[1;32m    131\u001b[0m         \u001b[0;34m[\u001b[0m\u001b[0mr\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mreset\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32mfor\u001b[0m \u001b[0mr\u001b[0m \u001b[0;32min\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mrnns\u001b[0m \u001b[0;32mif\u001b[0m \u001b[0mhasattr\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mr\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m'reset'\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    132\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mqrnn\u001b[0m\u001b[0;34m:\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mhidden\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0;34m[\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_one_hidden\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0ml\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32mfor\u001b[0m \u001b[0ml\u001b[0m \u001b[0;32min\u001b[0m \u001b[0mrange\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mn_layers\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 133\u001b[0;31m         \u001b[0;32melse\u001b[0m\u001b[0;34m:\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mhidden\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0;34m[\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_one_hidden\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0ml\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_one_hidden\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0ml\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32mfor\u001b[0m \u001b[0ml\u001b[0m \u001b[0;32min\u001b[0m \u001b[0mrange\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mn_layers\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    134\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    135\u001b[0m \u001b[0;32mclass\u001b[0m \u001b[0mLinearDecoder\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mnn\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mModule\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/fastai/fastai/text/models/awd_lstm.py\u001b[0m in \u001b[0;36m<listcomp>\u001b[0;34m(.0)\u001b[0m\n\u001b[1;32m    131\u001b[0m         \u001b[0;34m[\u001b[0m\u001b[0mr\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mreset\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32mfor\u001b[0m \u001b[0mr\u001b[0m \u001b[0;32min\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mrnns\u001b[0m \u001b[0;32mif\u001b[0m \u001b[0mhasattr\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mr\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m'reset'\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    132\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mqrnn\u001b[0m\u001b[0;34m:\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mhidden\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0;34m[\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_one_hidden\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0ml\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32mfor\u001b[0m \u001b[0ml\u001b[0m \u001b[0;32min\u001b[0m \u001b[0mrange\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mn_layers\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 133\u001b[0;31m         \u001b[0;32melse\u001b[0m\u001b[0;34m:\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mhidden\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0;34m[\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_one_hidden\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0ml\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_one_hidden\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0ml\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m \u001b[0;32mfor\u001b[0m \u001b[0ml\u001b[0m \u001b[0;32min\u001b[0m \u001b[0mrange\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mn_layers\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    134\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    135\u001b[0m \u001b[0;32mclass\u001b[0m \u001b[0mLinearDecoder\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mnn\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mModule\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/fastai/fastai/text/models/awd_lstm.py\u001b[0m in \u001b[0;36m_one_hidden\u001b[0;34m(self, l)\u001b[0m\n\u001b[1;32m    120\u001b[0m         \u001b[0;34m\"Return one hidden state.\"\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    121\u001b[0m         \u001b[0mnh\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mn_hid\u001b[0m \u001b[0;32mif\u001b[0m \u001b[0ml\u001b[0m \u001b[0;34m!=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mn_layers\u001b[0m \u001b[0;34m-\u001b[0m \u001b[0;36m1\u001b[0m \u001b[0;32melse\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0memb_sz\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m//\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mndir\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 122\u001b[0;31m         \u001b[0;32mreturn\u001b[0m \u001b[0mone_param\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mnew\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mndir\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mbs\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mnh\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mzero_\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    123\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    124\u001b[0m     \u001b[0;32mdef\u001b[0m \u001b[0mselect_hidden\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0midxs\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;31mRuntimeError\u001b[0m: cuda runtime error (59) : device-side assert triggered at /pytorch/aten/src/THC/generic/THCTensorMath.cu:24"
+     ]
+    }
+   ],
+   "source": [
+    "learn.beam_search('hello', 1)"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.8"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
