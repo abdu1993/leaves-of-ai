@@ -74,11 +74,12 @@ def textResponse(temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):
             break
         addition = learn.predict(word, 1, temperature=temp)
         total.append(addition)
+        total = total[-2:]
         commas = addition.count(',')
-        last_4 = total[i].split()[-4:]
+        last_4 = total[-1].split()[-4:]
         word = addition
         i += 1
-        temp = max(abs((math.cos(len(total) * math.pi / decay)))*temp_init,0.1)
+        temp = max(abs((math.cos(i * math.pi / decay)))*temp_init,0.1)
 
     words = total[-2].split()
     for i, word in enumerate(words):
