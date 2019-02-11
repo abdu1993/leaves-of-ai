@@ -1,19 +1,16 @@
-# Leaves of AI
+# Sing4Me - Song lyric Generation with fastai
 
-Generate Walt Whitman Poetry Using Deep Learning.
+notebook-code.ipynb file has all the code that was used for this model. 
+The learner was built with the fastai library which sits on top of Pytorch. 
 
-Project inspired by the NaNoGenMo series: https://github.com/NaNoGenMo/2018
+This uses the language model learner which is pretrained with the wikitext_103 weights. 
 
-The generated novel is attached in the whitman_novel.md file.
+The lyrics of Coldplay, Taylor Swift, Selena Gomez, Sugarland, Lorde, Lana Del Rey, Bob Dylan, Keane, Onerepublic, Snow PAtrol, Imagine Dragons, The Fray, Ed Sheeran, Shawn Mendes, Jason Myraz, and Colbie Callait were used to fine tune the language model. The dataset was grabbed from Kaggle - artimous/every-song-you-have-heard-almost. 
 
-This project was built using the fastai library (which is in turn built on Pytorch). We used an AWD-LSTM based char-RNN network to generate our text.
+The web app is hosted on render.com. 
 
-All the processing steps are in the jupyter notebook. The other fields are used to build a web app that generates Walt Whitman poetry on demand. It is hosted using Zeit.
+This is all thanks to btahir and the project to make a Walt Whitman novel with fastai. 
+I forked the repo as a base for my web app.
+![alt text](https://github.com/btahir/leaves-of-ai/)
 
-The app can be seen live here: https://leaves-of-ai.now.sh/
-
-![alt text](https://github.com/btahir/leaves-of-ai/blob/master/app-snap.jpg)
-
-Inference takes a few minutes and the text generation is still prone to errors depending on which root word you use to generate the text. 
-
-There is room for improvement by using better prediction methods such as beam search. Hopefully - I will be implementing that soon.
+The next step is to use beam search to optimize these results. 
