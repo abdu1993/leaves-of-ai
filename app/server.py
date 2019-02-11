@@ -12,7 +12,7 @@ import time
 from fastai import *
 from fastai.text import *
 
-model_file_url = 'https://drive.google.com/uc?export=download&id=1TSt4kiHYfL2IW04DJEOJtn2Mnf_zY8-T'
+model_file_url = 'https://drive.google.com/uc?export=download&id=1iM4LYs9wmBnZi9auIxF0iWmiGTpbc63-'
 model_file_name = 'model_2_10'
 path = Path(__file__).parent
 
@@ -52,14 +52,11 @@ def index(request):
 async def analyze(request):
     data = await request.form()
 
-    return JSONResponse({'result': textResponse(data)})
+    return JSONResponse({'result': textResponse()})
 
-def textResponse(data, temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):
-    seeds = ['you are', 'i love you', 'we are', 'how can']
-    if data:
-        word = data
-    else:
-        word = random.choice(seeds)    
+def textResponse(temp_init=1, decay=50, stops = ['.'], comma_limit=2, words=50):
+    seeds = ['you are', 'i love you', 'we are', 'how can', 'what if', 'will you']
+    word = random.choice(seeds)    
     again = []
     stops.append('xxbos')
     last_4 = ['','','','']
@@ -77,11 +74,12 @@ def textResponse(data, temp_init=1, decay=50, stops = ['.'], comma_limit=2, word
             break
         addition = learn.predict(word, 1, temperature=temp)
         total.append(addition)
+        total = total[-2:]
         commas = addition.count(',')
-        last_4 = total[i].split()[-4:]
+        last_4 = total[-1].split()[-4:]
         word = addition
         i += 1
-        temp = max(abs((math.cos(len(total) * math.pi / decay)))*temp_init,0.1)
+        temp = max(abs((math.cos(i * math.pi / decay)))*temp_init,0.1)
 
     words = total[-2].split()
     for i, word in enumerate(words):
